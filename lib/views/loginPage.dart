@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+import 'package:supotify/views/signupPage.dart';
+
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  bool _rememberMe = false;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              'Welcome to SUpotify',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                ),
+                obscureText: true, // Hide the password input
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 220,),
+                Text("Remember me",),
+                Checkbox(value:  _rememberMe,
+                 onChanged: (bool? value){
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                  
+                 },
+                 activeColor: Colors.greenAccent,),
+              ],
+              
+            ),
+           
+            ElevatedButton(
+              onPressed: () {
+               Navigator.push(context, 
+               MaterialPageRoute(builder: (context) => const signupPage())); // Add your login logic here
+              },
+              child: const Text('Log In'),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Text("Don't have an account?",),
+     const SizedBox(width: 7,),
+    ElevatedButton(
+      onPressed: () {
+        Navigator.push(context, 
+        MaterialPageRoute(builder: (context) => const signupPage())); // Add your login logic here
+      },
+      child: const Text('Sign Up'),
+      
+    ),
+    const SizedBox(width: 153,),
+  ],
+),
+          ],
+        ),
+      ),
+    );
+  }
+}
