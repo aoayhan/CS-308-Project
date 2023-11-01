@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/signupPage.dart';
+import 'package:supotify/views/homePage.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -68,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
               onPressed: () {
                Navigator.push(context, 
-               MaterialPageRoute(builder: (context) => const signupPage())); // Add your login logic here
+               MaterialPageRoute(builder: (context) => const homePage())); // Add your login logic here
               },
               child: const Text('Log In'),
             ),

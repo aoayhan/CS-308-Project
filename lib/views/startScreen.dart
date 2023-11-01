@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
+import 'package:supotify/views/homePage.dart';
 
 class startScreen extends StatelessWidget {
   const startScreen({super.key});
@@ -22,12 +23,21 @@ class startScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                Navigator.push(context, 
+               MaterialPageRoute(builder: (context) => const homePage())); // Add your login logic here
+              },
+              child: const Text('Home Page'),
+            ),
+            SizedBox(height: 35,),
+
+            ElevatedButton(
+              onPressed: () {
+               Navigator.push(context, 
                MaterialPageRoute(builder: (context) => const LoginPage())); // Add your login logic here
               },
               child: const Text('Log In'),
             ),
 
-            SizedBox(height: 50,),
+            SizedBox(height: 35,),
 
             ElevatedButton(
       onPressed: () {

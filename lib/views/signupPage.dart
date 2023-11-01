@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
+import 'package:supotify/views/homePage.dart';
 
 class signupPage extends StatefulWidget {
   const signupPage({super.key});
@@ -73,7 +74,7 @@ class _signupPageState extends State<signupPage> {
                Navigator.push(context, 
                MaterialPageRoute(
                 builder: (
-                  context) => const LoginPage())); // Add your login logic here
+                  context) => const homePage())); // Add your login logic here
               },
               child: const Text('Sign up'),
             ),
