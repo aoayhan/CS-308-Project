@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
+import 'package:supotify/views/startScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +17,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green, // You can choose your own color
       ),
-      home: const LoginPage(),
+      home: const startScreen(),
+      
     );
   }
 }
