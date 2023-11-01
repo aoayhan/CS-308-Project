@@ -48,9 +48,9 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                SizedBox(width: 220,),
+                
                 Text("Remember me",),
                 Checkbox(value:  _rememberMe,
                  onChanged: (bool? value){
@@ -60,6 +60,7 @@ class _LoginPageState extends State<LoginPage> {
                   
                  },
                  activeColor: Colors.greenAccent,),
+                 SizedBox(width: 20,),
               ],
               
             ),
@@ -73,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
   children: [
     Text("Don't have an account?",),
      const SizedBox(width: 7,),
@@ -85,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
       child: const Text('Sign Up'),
       
     ),
-    const SizedBox(width: 153,),
+    
   ],
 ),
           ],
