@@ -11,13 +11,12 @@ function loginUser(email, password) {
         .then((userCredential) => {
             // Signed in 
             var user = userCredential.user;
-            // Redirect to home page or dashboard
             alert("Login successful! Welcome, " + user.email);
+            window.location.href = 'addsong.html';
         })
         .catch((error) => {
             var errorCode = error.code;
             var errorMessage = error.message;
-            // Handle errors here, such as displaying a message to the user
             alert("Invalid Credentials");
         });
 }

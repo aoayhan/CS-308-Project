@@ -9,6 +9,8 @@ function registerUser(email, password) {
         .then((userCredential) => {
             var user = userCredential.user;
             // Handle post-registration actions
+            alert("Registration successful for " + email);
+
         })
         .catch((error) => {
             var errorCode = error.code;

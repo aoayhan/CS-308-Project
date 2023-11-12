@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Song</title>
+</head>
+<body>
+    <h1>Add a Song to Firestore</h1>
+
+    <form id="add-song-form">
+        <div>
+            <label for="song-name">Song Name:</label>
+            <input type="text" id="song-name" placeholder="Enter song name" required>
+        </div>
+        <div>
+            <label for="song-album">Album:</label>
+            <input type="text" id="song-album" placeholder="Enter album name" required>
+        </div>
+        <div>
+            <label for="song-artist">Artist:</label>
+            <input type="text" id="song-artist" placeholder="Enter artist name" required>
+        </div>
+        <div>
+            <label for="song-year">Year:</label>
+            <input type="number" id="song-year" placeholder="Enter release year" required>
+        </div>
+        <div>
+            <label for="rating">Rating:</label>
+            <input type="number" id="song-rating" placeholder="Enter your rating">
+        </div>
+        <button type="submit">Add Song</button>
+    </form>
+    <h2>Search for a Song</h2>
+    <form id="search-song-form">
+        <input type="text" id="search-query" placeholder="Enter song name">
+        <button type="submit">Search</button>
+    </form>
+    
+    <div id="search-results">
+        <!-- Search results will be displayed here -->
+    </div>
+    <p>To delete a song, press here <a href="deletesong.html">delete</a>.</p>
+    
+    <script type="module" src="addsong.js"></script>
+</body>
+</html>

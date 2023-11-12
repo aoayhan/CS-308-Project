@@ -1,8 +1,11 @@
-// Import the functions you need from the SDKs you need
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
 
-// Your web app's Firebase configuration
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js';
+
+
+// Web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDdOI7OFmwajeufUvbp7I0_QbOKLK0whr4",
     authDomain: "cs308fire.firebaseapp.com",
@@ -17,4 +20,8 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+
+export const db = getFirestore(app);
+
+const auth = getAuth(app);
 export { app };
