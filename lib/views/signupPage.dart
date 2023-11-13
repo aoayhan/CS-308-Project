@@ -25,7 +25,7 @@ class _signupPageState extends State<signupPage> {
       ),
       body: Builder(
         builder: (context) => SingleChildScrollView(
-child: Form(
+        child: Form(
           key: signupFormKey,
           child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -46,7 +46,7 @@ child: Form(
               child: TextFormField(
                 decoration: const InputDecoration(
                   icon: Icon(Icons.person),
-                  labelText: 'email',
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
                 controller: _emailTextController,
@@ -99,14 +99,6 @@ child: Form(
 
             const SizedBox(height: 24),
 
-            /* ElevatedButton(
-      onPressed: () {
-        Navigator.push(context, 
-        MaterialPageRoute(builder: (context) => const signupPage())); // Add your login logic here
-      },
-      child: const Text('Sign Up'),
-      
-    ),*/
 
             firebaseUIButton(context, "Sign Up", () {
                   FirebaseAuth.instance

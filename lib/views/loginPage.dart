@@ -44,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
               child: TextFormField(
                 decoration: const InputDecoration(
                   icon: Icon(Icons.person),
-                  labelText: 'email',
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
                 controller: _emailTextController,
