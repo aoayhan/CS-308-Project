@@ -9,7 +9,7 @@ class startScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 70, 68, 68),
+      backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       body: Center(
         child: Column(
           
@@ -18,7 +18,7 @@ class startScreen extends StatelessWidget {
             const Text('Welcome to SUpotify',
             style: TextStyle(color: Colors.green,fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 50,),
+            const SizedBox(height: 50,),
 
             ElevatedButton(
               onPressed: () {
@@ -27,7 +27,7 @@ class startScreen extends StatelessWidget {
               },
               child: const Text('Home Page'),
             ),
-            SizedBox(height: 35,),
+            const SizedBox(height: 35,),
 
             ElevatedButton(
               onPressed: () {
@@ -37,7 +37,7 @@ class startScreen extends StatelessWidget {
               child: const Text('Log In'),
             ),
 
-            SizedBox(height: 35,),
+            const SizedBox(height: 35,),
 
             ElevatedButton(
       onPressed: () {

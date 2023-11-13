@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "351363273489",
+    "firebase_url": "https://cs308fire-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "cs308fire",
+    "storage_bucket": "cs308fire.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:351363273489:android:a2277103d0f1fe608772b0",
+        "android_client_info": {
+          "package_name": "com.example.supotify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrV_jK1BwEooFIzztNIVmTcSccl8O8gn4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
