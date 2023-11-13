@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
 import 'package:supotify/views/homePage.dart';
+import 'package:supotify/reusable_widgets/reusable_widget.dart';
 
 class startScreen extends StatelessWidget {
   const startScreen({super.key});
@@ -20,33 +21,29 @@ class startScreen extends StatelessWidget {
             ),
             const SizedBox(height: 50,),
 
-            ElevatedButton(
-              onPressed: () {
-               Navigator.push(context, 
-               MaterialPageRoute(builder: (context) => const homePage())); // Add your login logic here
-              },
-              child: const Text('Home Page'),
-            ),
+            firebaseUIButton(context, "Home", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => homePage()));
+                 
+                }),
             const SizedBox(height: 35,),
 
-            ElevatedButton(
-              onPressed: () {
-               Navigator.push(context, 
-               MaterialPageRoute(builder: (context) => const LoginPage())); // Add your login logic here
-              },
-              child: const Text('Log In'),
-            ),
+            firebaseUIButton(context, "Login", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => LoginPage()));
+                 
+                }),
 
             const SizedBox(height: 35,),
 
-            ElevatedButton(
-      onPressed: () {
-        Navigator.push(context, 
-        MaterialPageRoute(builder: (context) => const signupPage())); // Add your login logic here
-      },
-      child: const Text('Sign Up'),
-      
-    ),
+           firebaseUIButton(context, "Sign Up", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => signupPage()));
+                 
+                }),
     
 
     
