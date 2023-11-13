@@ -46,7 +46,7 @@ child: Form(
               child: TextFormField(
                 decoration: const InputDecoration(
                   icon: Icon(Icons.person),
-                  labelText: 'Username',
+                  labelText: 'email',
                   border: OutlineInputBorder(),
                 ),
                 controller: _emailTextController,
@@ -63,6 +63,7 @@ child: Form(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextFormField(
                 decoration: const InputDecoration(
+                  icon: Icon(Icons.key),
                   labelText: 'Password',
                   border: OutlineInputBorder(),
                 ),
@@ -82,6 +83,7 @@ child: Form(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextFormField(
                 decoration: const InputDecoration(
+                  icon: Icon(Icons.key),
                   labelText: 'Confirm Password',
                   border: OutlineInputBorder(),
                 ),
