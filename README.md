@@ -1,16 +1,21 @@
-# supotify
-
-A new Flutter project.
-
 ## Getting Started
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+# Prerequisites for backend:
+Node.js
+NPM (Node Package Manager)
+A Firebase account and a configured Firebase project
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+1) Use 'npm install' to install node modules.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+2) Firebase Configuration
+Set up your Firebase project and download the configuration file.
+Place the Firebase config file in the project directory.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+3)Spotify API Setup
+Create a Spotify Developer account and register your application to get your Client ID and Client Secret.
+Update the server.js file with your Spotify credentials.
+
+Run 'node server.js'
+
+Open home page to start using the application.
