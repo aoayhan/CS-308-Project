@@ -11,11 +11,11 @@ A spotify developer account with Client ID and Client Secret
 
 1) Use 'npm install' to install node modules.
 
-2) Firebase Configuration
+2) Firebase Configuration:
 Set up your Firebase project and download the configuration file.
 Place the Firebase config file in the project directory.
 
-3) Spotify API Setup
+3) Spotify API Setup:
 Create a Spotify Developer account and register your application to get your Client ID and Client Secret.
 Update the server.js file with your Spotify credentials.
 
