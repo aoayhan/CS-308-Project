@@ -3,7 +3,7 @@ import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
 import 'package:supotify/views/homePage.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
-
+import 'package:supotify/views/addSongs.dart';
 class startScreen extends StatelessWidget {
   const startScreen({super.key});
 
@@ -24,7 +24,7 @@ class startScreen extends StatelessWidget {
             firebaseUIButton(context, "Home", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => homePage()));
+                        MaterialPageRoute(builder: (context) => SongAddPage()));
                  
                 }),
             const SizedBox(height: 35,),
