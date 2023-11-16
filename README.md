@@ -2,9 +2,12 @@
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 # Prerequisites for backend:
 Node.js
+
 NPM (Node Package Manager)
+
 A Firebase account and a configured Firebase project
 
+A spotify developer account with Client ID and Client Secret
 
 1) Use 'npm install' to install node modules.
 
