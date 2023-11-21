@@ -1,56 +1,53 @@
 const express = require('express');
-const admin = require('firebase-admin');
-const serviceAccount = require('/Users/anilayhan/Desktop/CS308 2/backend server/cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
+const fetch = require('node-fetch');
 const app = express();
+const cors = require('cors');
 
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://console.firebase.google.com/project/cs308fire/database/cs308fire-default-rtdb/data'
-});
+app.use(cors());
 
-app.use(express.json());
+const clientId = 'bf75c821e4df4ebf9808a680b5c702a4'; // Replace with your Spotify Client ID
+const clientSecret = '6679207e99094bb7a84eaf0d9d745089'; // Replace with your Spotify Client Secret
 
-// User Registration (Sign-Up) Endpoint
-app.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
+let accessToken = '';
+let tokenExpirationEpoch;
 
-  try {
-    const userRecord = await admin.auth().createUser({
-      email,
-      password
+const getSpotifyToken = async () => {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64')
+        },
+        body: 'grant_type=client_credentials'
     });
 
-    res.status(201).json({ message: 'User created successfully', user: userRecord });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    const data = await response.json();
+    accessToken = data.access_token;
+    const expiresIn = data.expires_in || 3600; // Default to 1 hour if not specified
+    tokenExpirationEpoch = (new Date().getTime() / 1000) + expiresIn - 300; // Subtract 5 minutes to refresh token early
+};
 
-// User Login Endpoint
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+// Refresh the token periodically
+setInterval(() => {
+    if (new Date().getTime() / 1000 > tokenExpirationEpoch) {
+        getSpotifyToken();
+    }
+}, 1000 * 60 * 5); // Check every 5 minutes
 
-  try {
-    const userRecord = await admin.auth().getUserByEmail(email);
+// Initial token fetch
+getSpotifyToken();
 
-    // Check if the provided password matches the stored password
-    // You can implement your own password comparison logic here
+// Your server's other endpoints and logic...
 
-    // For simplicity, let's assume the password matches for this example
-    // In a real application, you should use a secure password hashing library
-    // and compare the hashed password with the stored hashed password
-
-    res.status(200).json({ message: 'Login successful', user: userRecord });
-  } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Invalid credentials' });
-  }
-});
-
-// Start the server
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const PORT = 3000; // Use your preferred port
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/spotify-search', async (req, res) => {
+  const query = req.query.q;
+  const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&market=TR&limit=6`, {
+      headers: {
+          'Authorization': `Bearer ${accessToken}`
+      }
+  });
+  const data = await response.json();
+  res.send(data);
 });
