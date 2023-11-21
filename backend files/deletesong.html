@@ -4,21 +4,32 @@
     <title>Delete Song</title>
 </head>
 <body>
-    <h1>Delete a Song from Firestore</h1>
+    <h1>Delete a Song</h1>
 
     <form id="delete-song-form">
         <div>
             <label for="delete-song-name">Song Name:</label>
             <input type="text" id="delete-song-name" placeholder="Enter song name" required>
-        </div>
-        <div>
             <label for="delete-artist-name">Artist Name:</label>
             <input type="text" id="delete-artist-name" placeholder="Enter artist name" required>
-        </div>
         <button type="submit">Delete Song</button>
-    </form>
 
-    <p>To add a song, press here <a href="addsong.html">add</a>.</p>
+        </div>
+    </form>
+    <h2>Delete an Album</h2>
+    <form id="delete-album-form">
+        <input type="text" id="album-name" placeholder="Enter album name" required>
+        <button type="submit">Delete Album</button>
+    </form>
+    <h2>Delete All Songs by an Artist</h2>
+    <form id="delete-artist-form">
+        <input type="text" id="artist-name" placeholder="Enter artist name" required>
+        <button type="submit">Delete Artist's Songs</button>
+    </form>
+    <p>To add a song, press <a href="addsong.html">here</a>.</p>
+
+    <p>To view songs, press <a href="viewSongs.html">here</a>.</p>
+
 
     <script type="module" src="deleteSong.js"></script>
 
