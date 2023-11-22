@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class SongAddPage extends StatefulWidget {
   const SongAddPage({Key? key}) : super(key: key);
@@ -14,10 +16,15 @@ class _SongAddPageState extends State<SongAddPage> {
   final TextEditingController artistNameController = TextEditingController();
   List<Song> songs = [];
   List<Song> searchResults = [];
+  List<Song> userSongList = []; // List to store the user's selected songs
 
   // Replace these with your actual Spotify API credentials
   final String clientId = 'bf75c821e4df4ebf9808a680b5c702a4';
   final String clientSecret = '6679207e99094bb7a84eaf0d9d745089';
+
+  // Reference to the Firestore collection
+  final CollectionReference userSongCollection =
+      FirebaseFirestore.instance.collection('user_songs');
 
   Future<void> addSong() async {
     final String songName = songNameController.text;
@@ -37,7 +44,7 @@ class _SongAddPageState extends State<SongAddPage> {
       Uri.parse('https://accounts.spotify.com/api/token'),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
+        'Authorization': 'Basic ${base64Encode(utf8.encode('$clientId:$clientSecret'))}',
       },
       body: 'grant_type=client_credentials',
     );
@@ -95,6 +102,57 @@ class _SongAddPageState extends State<SongAddPage> {
     setState(() {});
   }
 
+  Future<void> fetchUserSongs() async {
+    try {
+      final querySnapshot = await userSongCollection.get();
+      final List<Song> userSongs = querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Song(data['name'], data['artist']);
+      }).toList();
+
+      setState(() {
+        userSongList = userSongs;
+      });
+    } catch (e) {
+      print('Error fetching user songs: $e');
+    }
+  }
+
+  void removeUserSong(Song song) async {
+    // Find the document reference for the song in Firebase
+    final documentReference =
+        await userSongCollection.where('name', isEqualTo: song.name).get();
+
+    // Delete the song from Firebase
+    for (final doc in documentReference.docs) {
+      await doc.reference.delete();
+    }
+
+    // Fetch updated user songs
+    await fetchUserSongs();
+  }
+
+  // Function to add a selected song to the user's list and send it to Firebase
+  void addToUserList(Song selectedSong) async {
+    setState(() {
+      userSongList.add(selectedSong);
+    });
+
+    // Add the user's song list to Firebase
+    await userSongCollection.add({
+      'name': selectedSong.name,
+      'artist': selectedSong.artist,
+    });
+
+    // Fetch updated user songs
+    await fetchUserSongs();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserSongs();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,17 +164,29 @@ class _SongAddPageState extends State<SongAddPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
-            TextField(
-              controller: songNameController,
-              decoration: const InputDecoration(labelText: 'Song Name'),
-            ),
-            TextField(
-              controller: artistNameController,
-              decoration: const InputDecoration(labelText: 'Artist Name'),
-            ),
-            ElevatedButton(
-              onPressed: addSong,
-              child: const Text('Add Song'),
+            Expanded(
+              child: userSongList.isNotEmpty
+                  ? ListView.builder(
+                      itemCount: userSongList.length,
+                      itemBuilder: (context, index) {
+                        final Song currentSong = userSongList[index];
+
+                        return ListTile(
+                          title: Text(currentSong.name),
+                          subtitle: Text(currentSong.artist),
+                          // Add a button to remove the song from the user's list
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              removeUserSong(currentSong);
+                            },
+                            child: const Text('Remove'),
+                          ),
+                        );
+                      },
+                    )
+                  : const Center(
+                      child: Text('No songs found.'),
+                    ),
             ),
             TextField(
               onChanged: (query) {
@@ -127,19 +197,27 @@ class _SongAddPageState extends State<SongAddPage> {
             Expanded(
               child: searchResults.isNotEmpty
                   ? ListView.builder(
-                itemCount: searchResults.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(searchResults[index].name),
-                    subtitle: Text(searchResults[index].artist),
-                  );
-                },
-              )
-                  : Center(
-                child: Text('No results found for the given search query.'),
-              ),
-            ),
+                      itemCount: searchResults.length,
+                      itemBuilder: (context, index) {
+                        final Song currentSong = searchResults[index];
 
+                        return ListTile(
+                          title: Text(currentSong.name),
+                          subtitle: Text(currentSong.artist),
+                          // Add a button to add the song to the user's list
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              addToUserList(currentSong);
+                            },
+                            child: const Text('Add to List'),
+                          ),
+                        );
+                      },
+                    )
+                  : const Center(
+                      child: Text('No results found for the given search query.'),
+                    ),
+            ),
           ],
         ),
       ),
@@ -154,4 +232,10 @@ class Song {
   Song(this.name, this.artist);
 }
 
-
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const MaterialApp(
+    home: SongAddPage(),
+  ));
+}

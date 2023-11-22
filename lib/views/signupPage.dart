@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
-import 'package:supotify/views/homePage.dart';
-import 'package:supotify/firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:supotify/views/addSongs.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class signupPage extends StatefulWidget {
@@ -108,7 +106,7 @@ class _signupPageState extends State<signupPage> {
                       .then((value) {
                     print("Created New Account");
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => homePage()));
+                        MaterialPageRoute(builder: (context) => const SongAddPage()));
                   }).onError((error, stackTrace) {
                     print("Error ${error.toString()}");
                   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/signupPage.dart';
-import 'package:supotify/views/homePage.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:supotify/views/addSongs.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
 class LoginPage extends StatefulWidget {
@@ -32,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            SizedBox(height: 20,),
+            const SizedBox(height: 20,),
             const Text(
               'Welcome to SUpotify',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -105,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                           password: _passwordTextController.text)
                       .then((value) {
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => homePage()));
+                        MaterialPageRoute(builder: (context) => const SongAddPage()));
                   }).onError((error, stackTrace) {
                     print("Error ${error.toString()}");
                   });
@@ -121,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
               firebaseUIButton(context, "Sign Up", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => signupPage()));
+                        MaterialPageRoute(builder: (context) => const signupPage()));
                   
                 }),
 

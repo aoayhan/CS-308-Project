@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
-import 'package:supotify/views/homePage.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
 import 'package:supotify/views/addSongs.dart';
 class startScreen extends StatelessWidget {
@@ -24,7 +23,7 @@ class startScreen extends StatelessWidget {
             firebaseUIButton(context, "Home", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => SongAddPage()));
+                        MaterialPageRoute(builder: (context) => const SongAddPage()));
                  
                 }),
             const SizedBox(height: 35,),
@@ -32,7 +31,7 @@ class startScreen extends StatelessWidget {
             firebaseUIButton(context, "Login", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => LoginPage()));
+                        MaterialPageRoute(builder: (context) => const LoginPage()));
                  
                 }),
 
@@ -41,7 +40,7 @@ class startScreen extends StatelessWidget {
            firebaseUIButton(context, "Sign Up", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => signupPage()));
+                        MaterialPageRoute(builder: (context) => const signupPage()));
                  
                 }),
     
