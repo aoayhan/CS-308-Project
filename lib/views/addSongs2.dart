@@ -148,7 +148,7 @@ class _SongAddPageState2 extends State<SongAddPage2> {
           children: <Widget>[
             TextField(
               controller: songNameController,
-              decoration: const InputDecoration(labelText: 'Song Name 1'),
+              decoration: const InputDecoration(labelText: 'Song Name'),
             ),
             TextField(
               controller: artistNameController,
