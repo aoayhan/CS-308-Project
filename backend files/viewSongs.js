@@ -1,5 +1,5 @@
 import { db } from './app.js';
-import { collection, getDocs, updateDoc, doc, query, where} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js';
+import { collection, addDoc, getDocs, getDoc, where, query, doc, updateDoc, arrayUnion, serverTimestamp} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
 
 const auth = getAuth();
@@ -80,18 +80,43 @@ function displaySongs(songs, title) {
     songsContainer.appendChild(section);
 }
 
-async function rateSong(songId, rating) {
-    const parsedRating = parseInt(rating, 10);
+async function rateSong(songId, newRating) {
+    const parsedRating = parseInt(newRating, 10);
+    const user = auth.currentUser;
 
-    // Check if rating is within the allowed range
+    if (!user) {
+        alert("You must be logged in to rate songs.");
+        return;
+    }
+
     if (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 10) {
         alert("Rating must be a number between 1 and 10.");
         return;
     }
+
+    const songDocRef = doc(db, "song", songId);
+    const ratingHistoryRef = collection(songDocRef, "ratingHistory");
+
     try {
-        const songDocRef = doc(db, "song", songId);
-        await updateDoc(songDocRef, { rating: parsedRating });
-        alert("Rating updated!");
+        const songDoc = await getDoc(songDocRef);
+        const currentRating = songDoc.data()?.rating;
+
+        // Update the current rating
+        await updateDoc(songDocRef, {
+            rating: parsedRating
+        });
+
+        // Add the old rating to the rating history
+        if (currentRating !== undefined && currentRating !== null) {
+            await addDoc(ratingHistoryRef, {
+                oldRating: currentRating,
+                newRating: parsedRating,
+                updatedAt: serverTimestamp(), // Correct usage
+                userId: user.uid // User identifier
+            });
+        }
+
+        alert("Rating updated successfully!");
     } catch (error) {
         console.error("Error updating song rating: ", error);
         alert("Error updating rating.");
