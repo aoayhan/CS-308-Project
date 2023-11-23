@@ -14,6 +14,9 @@ class SongAddPage extends StatefulWidget {
 class _SongAddPageState extends State<SongAddPage> {
   final TextEditingController songNameController = TextEditingController();
   final TextEditingController artistNameController = TextEditingController();
+  final TextEditingController albumNameController = TextEditingController();
+  final TextEditingController yearNameController = TextEditingController();
+
   List<Song> songs = [];
   List<Song> searchResults = [];
   List<Song> userSongList = []; // List to store the user's selected songs
@@ -29,12 +32,16 @@ class _SongAddPageState extends State<SongAddPage> {
   Future<void> addSong() async {
     final String songName = songNameController.text;
     final String artistName = artistNameController.text;
+    final String albumName = albumNameController.text;
+    final String yearName = yearNameController.text;
 
-    if (songName.isNotEmpty && artistName.isNotEmpty) {
+    if (songName.isNotEmpty && artistName.isNotEmpty && albumName.isEmpty && yearName.isEmpty) {
       setState(() {
         songs.add(Song(songName, artistName));
         songNameController.clear();
         artistNameController.clear();
+        albumNameController.clear();
+        yearNameController.clear();
       });
     }
   }
@@ -83,6 +90,8 @@ class _SongAddPageState extends State<SongAddPage> {
         for (final track in tracks) {
           final String songName = track['name'];
           final String artistName = track['artists'][0]['name'];
+          final String albumName = track['album']['name'];
+          final String yearName = track['album']['release_date'].substring(0, 4);
           searchResults.add(Song(songName, artistName));
         }
 

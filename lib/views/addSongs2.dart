@@ -136,6 +136,25 @@ class _SongAddPageState2 extends State<SongAddPage2> {
     setState(() {});
   }
 
+  void removeSong(String songId) async {
+    try {
+      // Remove the song from Firebase
+      await songsCollection.doc(songId).delete();
+
+      // Remove the song from the search results
+      searchResults.removeWhere((song) => song.songId == songId);
+
+      // Update the UI by calling setState
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Song removed from Firebase')),
+      );
+    } catch (e) {
+      print('Error during song removal: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -181,8 +200,21 @@ class _SongAddPageState2 extends State<SongAddPage2> {
 
                         return ListTile(
                           title: Text(currentSong.name),
-                          subtitle: Text('Artist: ${currentSong.performers.join(', ')}\nAlbum: ${currentSong.album}'),
-                          /*trailing: Text('Album: ${currentSong.album}, Year: ${currentSong.year}, Edit: ${currentSong.edit}'),*/
+                          subtitle: Text(
+                            'Artist: ${currentSong.performers.join(', ')}\nAlbum: ${currentSong.album}',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Call a function to remove the song
+                                  removeSong(currentSong.songId);
+                                },
+                                child: const Text('Remove'),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     )
