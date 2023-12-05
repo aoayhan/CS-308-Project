@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Friendship Features</title>
+</head>
+<body>
+    <h1>Friendship Management</h1>
+    
+    <!-- Send Friend Request -->
+    <h2>Send Friend Request</h2>
+    <form id="send-request-form">
+        <input type="text" id="receiver-id" placeholder="Receiver's User ID">
+        <button type="submit">Send Request</button>
+    </form>
+
+    <!-- View Friends -->
+    <h2>View Friends</h2>
+    <button id="view-friends-button">View My Friends</button>
+    <ul id="friends-list"></ul>
+
+    <!-- View Pending Requests -->
+    <h2>View Pending Requests</h2>
+    <button id="view-requests-button">View Pending Requests</button>
+    <ul id="pending-requests-list"></ul>
+
+    <!-- Accept Friend Request -->
+    <h2>Accept Friend Request</h2>
+    <form id="accept-request-form">
+        <input type="text" id="sender-id" placeholder="Sender's User ID">
+        <button type="submit">Accept Request</button>
+    </form>
+
+    <script src="script.js"></script>
+</body>
+</html>
