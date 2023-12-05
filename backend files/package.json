@@ -1,0 +1,15 @@
+{
+  "name": "backend308server",
+  "version": "1.0.0",
+  "description": "308backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "aoayhan",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.1"
+  }
+}
