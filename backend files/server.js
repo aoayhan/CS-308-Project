@@ -5,10 +5,12 @@ const app = express();
 const port = 3000;
 app.use(express.json());
 app.use(cors());
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 //Firebase 
 const admin = require('firebase-admin');
 const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
-
+const fs = require('fs').promises;
 const { addUserRatingsToUsersCollection } = require('./songimport'); // Adjust the path to the actual location of songimport.js
 
 
@@ -79,7 +81,6 @@ app.post('/api/add-song', async (req, res) => {
     
 
     try {
-
         
         // Search for the song on Spotify to get the track ID
         const query = `${songName} artist:${artist}`;
@@ -137,6 +138,7 @@ app.delete('/api/delete-song', async (req, res) => {
     }
 
     try {
+        // First, delete the song from the 'song' collection
         const songCollectionRef = admin.firestore().collection('song');
         const querySnapshot = await songCollectionRef
             .where('name', '==', songName)
@@ -148,11 +150,33 @@ app.delete('/api/delete-song', async (req, res) => {
             return res.status(404).send('Song not found');
         }
 
+        // Delete all matching documents
         querySnapshot.forEach(doc => {
             doc.ref.delete();
         });
 
-        res.send('Song deleted successfully');
+        const usersRef = admin.firestore().collection('users');
+        const usersSnapshot = await usersRef.where('email', '==', userId).get();
+
+        if (usersSnapshot.empty) {
+            console.log('User not found:', userId);
+            return res.status(404).send('User not found');
+        }
+
+        // Assuming there's only one document per user
+        const userDoc = usersSnapshot.docs[0];
+        const userData = userDoc.data();
+        const ratings = Array.isArray(userData.ratings) ? userData.ratings : [];
+
+        const updatedRatings = ratings.filter(rating => 
+            !(rating.songName === songName && rating.artistName === artist)
+        );
+
+        if (updatedRatings.length !== ratings.length) {
+            await userDoc.ref.update({ ratings: updatedRatings });
+        }
+
+        res.send('Song deleted successfully and ratings updated');
     } catch (error) {
         console.error('Error deleting song:', error);
         res.status(500).send('Internal Server Error');
@@ -255,35 +279,52 @@ app.get('/spotify-search', async (req, res) => {
     res.json(simplifiedTracks);
 });
 app.get('/api/search-song', async (req, res) => {
-    const songName = req.query.name;
+    const songNameQuery = req.query.name;
 
-    if (!songName) {
+    if (!songNameQuery) {
         return res.status(400).send('Song name is required');
     }
 
     try {
         const songCollectionRef = admin.firestore().collection('song');
-        const querySnapshot = await songCollectionRef.where('name', '==', songName).get();
+        const querySnapshot = await songCollectionRef.get(); // Retrieve all songs
 
-        if (querySnapshot.empty) {
+        const searchLower = songNameQuery.toLowerCase();
+        const filteredSongs = [];
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            if (song.name && song.name.toLowerCase().includes(searchLower)) {
+                filteredSongs.push(song);
+            }
+        });
+
+        if (filteredSongs.length === 0) {
             return res.status(404).send('No songs found with this name');
         }
 
-        const songs = querySnapshot.docs.map(doc => doc.data());
-        res.status(200).json(songs);
+        res.status(200).json(filteredSongs);
     } catch (error) {
         console.error('Error searching for song:', error);
         res.status(500).send('Internal Server Error');
     }
 });
-app.post('/api/add-batch-songs', async (req, res) => {
-    const songs = req.body;
+app.post('/api/add-batch-songs', upload.single('songsFile'), async (req, res) => {
+    // 'songsFile' is the name attribute of the file input in your form or the key used in Postman
 
-    if (!Array.isArray(songs) || songs.length === 0) {
-        return res.status(400).send('Invalid song data');
+    if (!req.file) {
+        return res.status(400).send('No file uploaded');
     }
 
     try {
+        // Read the file using the path from multer's req.file
+        const songsData = await fs.readFile(req.file.path, 'utf8');
+        const songs = JSON.parse(songsData); // Parse the JSON data into a JavaScript array
+
+        if (!Array.isArray(songs) || songs.length === 0) {
+            return res.status(400).send('Invalid song data');
+        }
+
         const songCollectionRef = admin.firestore().collection('song');
         const batch = admin.firestore().batch();
 
@@ -295,6 +336,10 @@ app.post('/api/add-batch-songs', async (req, res) => {
         });
 
         await batch.commit();
+
+        // Delete the temporary file after processing
+        await fs.unlink(req.file.path);
+
         res.status(201).send('Songs added successfully');
     } catch (error) {
         console.error('Error adding batch songs:', error);
@@ -422,10 +467,15 @@ app.post('/api/deleteFriend', async (req, res) => {
     }
 });
 app.get('/api/recommend-songs', async (req, res) => {
-    const userEmail = "asd@mail.com"; // This should be dynamically retrieved from authentication in a real scenario
+    const userEmail = req.query.userEmail; // This should be dynamically retrieved from authentication in a real scenario
 
     console.log('Starting song recommendation process for:', userEmail);
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
 
+    console.log('Starting song recommendation process for:', userEmail);
+    
     try {
         const userRef = admin.firestore().collection('users').doc(userEmail);
         const userDoc = await userRef.get();
