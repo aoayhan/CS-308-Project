@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBeuJKaav7C5aFchINFx4YciZBlAe0lZg0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>351363273489</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.supotify</string>
+	<key>PROJECT_ID</key>
+	<string>cs308fire</string>
+	<key>STORAGE_BUCKET</key>
+	<string>cs308fire.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:351363273489:ios:db2d87212a50599a8772b0</string>
+	<key>DATABASE_URL</key>
+	<string>https://cs308fire-default-rtdb.europe-west1.firebasedatabase.app</string>
+</dict>
+</plist>

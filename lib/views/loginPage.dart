@@ -3,6 +3,7 @@ import 'package:supotify/views/signupPage.dart';
 import 'package:supotify/views/addSongs.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
+import 'package:supotify/views/friendList.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -104,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                           password: _passwordTextController.text)
                       .then((value) {
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const SongAddPage()));
+                        MaterialPageRoute(builder: (context) => const FriendManagementPage()));
                   }).onError((error, stackTrace) {
                     print("Error ${error.toString()}");
                   });

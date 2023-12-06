@@ -1,0 +1,97 @@
+.details-details {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.details-details1 {
+  width: 100%;
+  display: flex;
+  max-width: 1200px; /* replace with your desired value */
+  align-items: center;
+  padding-top: 24px; /* replace with your desired value */
+  padding-left: 18px; /* replace with your desired value */
+  padding-right: 18px; /* replace with your desired value */
+  padding-bottom: 24px; /* replace with your desired value */
+  justify-content: space-between;
+}
+
+.details-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.details-text {
+  color: #0050a1; /* replace with your desired color */
+  text-align: left;
+  font-family: "Raleway", sans-serif;
+  margin-bottom: 12px; /* replace with your desired value */
+}
+
+.details-details-heading {
+  width: 80%;
+  text-align: left;
+  font-family: "Raleway", sans-serif;
+  line-height: 1.6;
+  margin-bottom: 12px; /* replace with your desired value */
+}
+
+.details-details-sub-heading {
+  color: #333; /* replace with your desired color */
+  font-size: 18px;
+  text-align: left;
+  line-height: 1.6;
+  margin-bottom: 16px; /* replace with your desired value */
+}
+
+.details-details-image {
+  width: 400px;
+  height: 400px;
+  object-fit: cover;
+  margin-left: 24px; /* replace with your desired value */
+  border-radius: 10px; /* replace with your desired value */
+}
+
+@media(max-width: 991px) {
+  .details-details-sub-heading {
+      text-align: center;
+      padding-left: 18px; /* replace with your desired value */
+      padding-right: 18px; /* replace with your desired value */
+  }
+}
+
+@media(max-width: 767px) {
+  .details-details1 {
+      align-items: center;
+      padding-left: 16px; /* replace with your desired value */
+      padding-right: 16px; /* replace with your desired value */
+      flex-direction: column;
+      justify-content: center;
+  }
+  .details-container {
+      align-items: center;
+      justify-content: flex-start;
+  }
+  .details-text {
+      text-align: center;
+  }
+  .details-details-heading {
+      text-align: center;
+  }
+  .details-details-sub-heading {
+      text-align: center;
+      padding-left: 8px; /* replace with your desired value */
+      padding-right: 8px; /* replace with your desired value */
+  }
+  .details-details-image {
+      margin-top: 24px; /* replace with your desired value */
+      margin-left: 0;
+  }
+}
