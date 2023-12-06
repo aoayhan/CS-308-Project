@@ -3,6 +3,7 @@ import 'package:supotify/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supotify/views/startScreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 
@@ -14,6 +15,15 @@ void main() async {
   runApp(const MyApp());
 }
 
+Future<String?> getUserId() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString('userId');
+}
+
+void saveUserId(String userId) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString('userId', userId);
+}
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
