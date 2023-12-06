@@ -1,5 +1,22 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:supotify/utilis/songService.dart'; // Import the service file
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supotify/main.dart';
+
+class SongService {
+  Future<List<dynamic>> recommendSongs(String userEmail) async {
+    var url = Uri.parse('http://localhost:3000/api/recommend-songs?userEmail=$userEmail');
+var response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      // Handle errors or return an empty list
+      return [];
+    }
+  }
+}
 
 class RecommendSongsPage extends StatefulWidget {
   @override
@@ -7,13 +24,26 @@ class RecommendSongsPage extends StatefulWidget {
 }
 
 class _RecommendSongsPageState extends State<RecommendSongsPage> {
-  late Future<List<dynamic>> recommendedSongs;
+  // Initialize recommendedSongs with an empty list
+  Future<List<dynamic>> recommendedSongs = Future.value([]);
 
   @override
   void initState() {
     super.initState();
-    // Replace 'user@email.com' with the actual method to retrieve the user's email.
-    recommendedSongs = SongService().recommendSongs('user@email.com');
+    fetchRecommendedSongs();
+  }
+
+  void fetchRecommendedSongs() async {
+    String? userEmail = await getUserId();
+    if (userEmail != null) {
+      recommendedSongs = SongService().recommendSongs(userEmail);
+      setState(() {}); // Trigger a rebuild to use the updated future
+    }
+  }
+
+  Future<String?> getUserId() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    return user?.email; // Returns null if no user is signed in
   }
 
   @override

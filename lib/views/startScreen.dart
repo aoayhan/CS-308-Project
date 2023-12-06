@@ -19,14 +19,7 @@ class startScreen extends StatelessWidget {
             const Text('Welcome to SUpotify',
             style: TextStyle(color: Colors.green,fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 50,),
-
-            firebaseUIButton(context, "Home", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const SongAddPage2()));
-                 
-                }),
+            
             const SizedBox(height: 35,),
 
             firebaseUIButton(context, "Login", () {
