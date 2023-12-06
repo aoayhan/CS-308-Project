@@ -1,14 +1,17 @@
 const admin = require('firebase-admin');
 const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
 
+/*
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
+*/
 
-const firestore = admin.firestore();
-const auth = admin.auth();
+//const auth = admin.auth();
 
 async function addUserRatingsToUsersCollection(email) {
+
+    const firestore = admin.firestore();
     const userDocRef = firestore.collection('users').doc(email);
 
     try {
@@ -51,5 +54,7 @@ async function addUserRatingsToUsersCollection(email) {
     }
 }
 
-addUserRatingsToUsersCollection('asd@mail.com'); // Make sure the email is properly formatted as it is in Firestore
 
+module.exports = {
+    addUserRatingsToUsersCollection
+  };
