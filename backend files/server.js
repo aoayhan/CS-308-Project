@@ -5,6 +5,17 @@ const app = express();
 const port = 3000;
 app.use(express.json());
 app.use(cors());
+//Firebase 
+const admin = require('firebase-admin');
+const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
+
+const { addUserRatingsToUsersCollection } = require('./songimport'); // Adjust the path to the actual location of songimport.js
+
+
+admin.initializeApp({
+   credential: admin.credential.cert(serviceAccount)
+});
+const firestore = admin.firestore();
 
 //Spotify 
 const clientId = 'bf75c821e4df4ebf9808a680b5c702a4'; // Replace with your Spotify Client ID
@@ -35,17 +46,10 @@ setInterval(() => {
 }, 1000 * 60 * 5); // Check every 5 minutes
 getSpotifyToken();// Initial token fetch
 
-//Firebase 
-const admin = require('firebase-admin');
-const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
 
-admin.initializeApp({
-   credential: admin.credential.cert(serviceAccount)
-});
-
-app.get('/', (req, res) => {
-    res.send('Hello World!');
- });
+    app.get('/', (req, res) => {
+        res.send('Hello World!');
+    });
  const authenticate = async (req, res, next) => {
     const token = req.headers.authorization;
     if (!token) {
@@ -72,8 +76,11 @@ app.post('/api/add-song', async (req, res) => {
     if (!songName || !album || !artist || !year || !userId) {
         return res.status(400).send('Missing required song details or user ID');
     }
+    
 
     try {
+
+        
         // Search for the song on Spotify to get the track ID
         const query = `${songName} artist:${artist}`;
         const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&market=TR&limit=1`, {
@@ -103,15 +110,25 @@ app.post('/api/add-song', async (req, res) => {
             userId: userId, // Storing user's ID with the song
             spotifyTrackId: spotifyTrackId // Storing the Spotify track ID
         };
+        const existingSongQuery = await songCollectionRef
+            .where('name', '==', songName)
+            .where('album', '==', album)
+            .where('artist', '==', artist)
+            .get();
 
+        if (!existingSongQuery.empty) {
+            console.log('Song already exists in the database:', songName);
+            return res.status(409).send('Song already exists');
+        }
         await songCollectionRef.add(songDocument);
+
+        await addUserRatingsToUsersCollection(userId);
         res.status(201).send('Song added successfully with Spotify track ID');
     } catch (error) {
         console.error('Error adding song to Firestore:', error);
         res.status(500).send('Internal Server Error');
     }
 });
-
 app.delete('/api/delete-song', async (req, res) => {
     const { songName, artist, userId } = req.body;
 
@@ -430,7 +447,7 @@ app.get('/api/recommend-songs', async (req, res) => {
             }))
             .filter(rating => !isNaN(rating.rating) && rating.rating >= 4)
             .sort((a, b) => b.rating - a.rating)
-            .slice(0, 2);
+            .slice(0, 3);
 
         console.log('Top rated songs determined:', topRatedSongs);
 
@@ -477,6 +494,84 @@ app.get('/api/recommend-songs', async (req, res) => {
 
     } catch (error) {
         console.error('Error generating song recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/recommend-friends-songs', async (req, res) => {
+    const userEmail = "a@mail.com"; // This should be dynamically retrieved from authentication in a real scenario
+
+    console.log('Starting friend song recommendation process for:', userEmail);
+
+    try {
+        // Get the user's friends list
+        const userRef = admin.firestore().collection('users').doc(userEmail);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            console.log('User not found:', userEmail);
+            return res.status(404).send('User not found');
+        }
+
+        const userFriends = userDoc.data().friends || [];
+        if (userFriends.length === 0) {
+            return res.status(404).send('User has no friends to get recommendations from');
+        }
+
+        // For simplicity, let's take the first friend in the list
+        const friendEmail = userFriends[0];
+        const friendRef = admin.firestore().collection('users').doc(friendEmail);
+        const friendDoc = await friendRef.get();
+
+        if (!friendDoc.exists) {
+            console.log('Friend not found:', friendEmail);
+            return res.status(404).send(`Friend not found: ${friendEmail}`);
+        }
+
+        const friendRatings = friendDoc.data().ratings || [];
+        const topFriendSongs = friendRatings
+            .filter(rating => rating.rating && rating.rating >= 4)
+            .sort((a, b) => b.rating - a.rating)
+            .slice(0, 5); // Take top 5 rated songs from friend
+
+        console.log(`Found ${topFriendSongs.length} top rated songs from friend:`, friendEmail);
+
+        const numRecommendationsPerTrack = 2;
+        const recommendations = [];
+
+        for (const seedTrack of topFriendSongs) {
+            if (!seedTrack.spotifyTrackId) {
+                console.log(`No Spotify track ID for friend's song: ${seedTrack.songName}`);
+                continue;
+            }
+
+            const spotifyResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrack.spotifyTrackId}&limit=${numRecommendationsPerTrack}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!spotifyResponse.ok) {
+                console.error('Spotify API responded with error:', spotifyResponse.status);
+                continue;
+            }
+
+            const spotifyRecommendations = await spotifyResponse.json();
+
+            const trackRecommendations = spotifyRecommendations.tracks.map(track => ({
+                songName: track.name,
+                artistName: track.artists.map(artist => artist.name).join(", "),
+                albumName: track.album.name
+            }));
+
+            recommendations.push(...trackRecommendations);
+        }
+
+        console.log('Processed recommendations for friend:', recommendations);
+
+        res.status(200).json(recommendations);
+
+    } catch (error) {
+        console.error('Error generating friend song recommendations:', error);
         res.status(500).send('Internal Server Error');
     }
 });
