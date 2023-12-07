@@ -14,17 +14,23 @@ A spotify developer account with Client ID and Client Secret
 2) Firebase Configuration:
   Set up your Firebase project and download the configuration file.
   Place the Firebase config file in the project directory.
-  Use npm install firebase
+  Use:
+
+    npm install firebase
 
 4) Spotify API Setup:
   Create a Spotify Developer account and register your application to get your Client ID and Client Secret.
   Update the server.js file with your Spotify credentials.
 
 5) Download Multer:
-  Download Multer for file upload capabilities.
-6) Install CORS:
+  Download Multer for file upload capabilities, use:
+
+     npm install multer
+  
+7) Install CORS:
    If cors is not installed on your device, use:
-   npm install cors
+   
+     npm install cors
    
 Run 'node server.js'
 
