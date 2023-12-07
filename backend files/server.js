@@ -350,7 +350,8 @@ app.get('/api/view-songs', async (req, res) => {
     // Assuming you retrieve and verify the user ID from the request
     // For example, let's say the user ID is stored in req.userId after verification
     //const userId = req.userId; // Replace with actual logic to retrieve user's ID
-    const userId = "a@mail.com";
+    const { userId } = req.body;
+    
     try {
         const songCollectionRef = admin.firestore().collection('song');
         const querySnapshot = await songCollectionRef.where('userId', '==', userId).get();
@@ -548,12 +549,11 @@ app.get('/api/recommend-songs', async (req, res) => {
     }
 });
 app.get('/api/recommend-friends-songs', async (req, res) => {
-    const userEmail = "a@mail.com"; // This should be dynamically retrieved from authentication in a real scenario
+    const { userEmail } = req.body;
 
     console.log('Starting friend song recommendation process for:', userEmail);
 
     try {
-        // Get the user's friends list
         const userRef = admin.firestore().collection('users').doc(userEmail);
         const userDoc = await userRef.get();
 
@@ -567,58 +567,71 @@ app.get('/api/recommend-friends-songs', async (req, res) => {
             return res.status(404).send('User has no friends to get recommendations from');
         }
 
-        // For simplicity, let's take the first friend in the list
-        const friendEmail = userFriends[0];
-        const friendRef = admin.firestore().collection('users').doc(friendEmail);
-        const friendDoc = await friendRef.get();
+        let recommendations = [];
 
-        if (!friendDoc.exists) {
-            console.log('Friend not found:', friendEmail);
-            return res.status(404).send(`Friend not found: ${friendEmail}`);
-        }
+        for (const friendEmail of userFriends) {
+            const friendRecommendations = {
+                friend: friendEmail,
+                songs: []
+            };
 
-        const friendRatings = friendDoc.data().ratings || [];
-        const topFriendSongs = friendRatings
-            .filter(rating => rating.rating && rating.rating >= 4)
-            .sort((a, b) => b.rating - a.rating)
-            .slice(0, 5); // Take top 5 rated songs from friend
+            const friendRef = admin.firestore().collection('users').doc(friendEmail);
+            const friendDoc = await friendRef.get();
 
-        console.log(`Found ${topFriendSongs.length} top rated songs from friend:`, friendEmail);
-
-        const numRecommendationsPerTrack = 2;
-        const recommendations = [];
-
-        for (const seedTrack of topFriendSongs) {
-            if (!seedTrack.spotifyTrackId) {
-                console.log(`No Spotify track ID for friend's song: ${seedTrack.songName}`);
-                continue;
+            if (!friendDoc.exists) {
+                console.log('Friend not found:', friendEmail);
+                continue; // Skip to next friend if this one doesn't exist
             }
 
-            const spotifyResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrack.spotifyTrackId}&limit=${numRecommendationsPerTrack}`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
+            const friendRatings = friendDoc.data().ratings || [];
+            const topFriendSongs = friendRatings
+                .filter(rating => rating.rating && rating.rating >= 4)
+                .sort((a, b) => b.rating - a.rating)
+                .slice(0, 5); // Take top 5 rated songs from friend
+
+            for (const seedTrack of topFriendSongs) {
+                if (!seedTrack.spotifyTrackId) {
+                    console.log(`No Spotify track ID for friend's song: ${seedTrack.songName}`);
+                    continue; // Skip to next song if no Spotify ID
                 }
-            });
 
-            if (!spotifyResponse.ok) {
-                console.error('Spotify API responded with error:', spotifyResponse.status);
-                continue;
+                const spotifyResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrack.spotifyTrackId}&limit=2`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!spotifyResponse.ok) {
+                    console.error('Spotify API responded with error:', spotifyResponse.status);
+                    continue; // Skip to next song if API call fails
+                }
+
+                const spotifyRecommendations = await spotifyResponse.json();
+
+                friendRecommendations.songs.push(...spotifyRecommendations.tracks.map(track => ({
+                    songName: track.name,
+                    artistName: track.artists.map(artist => artist.name).join(", "),
+                    albumName: track.album.name
+                })));
             }
 
-            const spotifyRecommendations = await spotifyResponse.json();
-
-            const trackRecommendations = spotifyRecommendations.tracks.map(track => ({
-                songName: track.name,
-                artistName: track.artists.map(artist => artist.name).join(", "),
-                albumName: track.album.name
-            }));
-
-            recommendations.push(...trackRecommendations);
+            if (friendRecommendations.songs.length > 0) {
+                recommendations.push(friendRecommendations);
+            }
         }
 
-        console.log('Processed recommendations for friend:', recommendations);
+        console.log('Processed recommendations for all friends:', recommendations);
 
-        res.status(200).json(recommendations);
+        // Structure the response with headers
+        let structuredRecommendations = "";
+        recommendations.forEach(rec => {
+            structuredRecommendations += `From ${rec.friend}\n`;
+            rec.songs.forEach(song => {
+                structuredRecommendations += `${song.songName} by ${song.artistName}\n`;
+            });
+        });
+
+        res.status(200).send(structuredRecommendations);
 
     } catch (error) {
         console.error('Error generating friend song recommendations:', error);
