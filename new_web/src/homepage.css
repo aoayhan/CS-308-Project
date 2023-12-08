@@ -1,0 +1,35 @@
+/* HomePage.css */
+
+.home-container {
+    /* Use similar styling as your login-container */
+    margin: auto;
+    width: 90%;
+    max-width: 500px;
+    padding: 20px;
+    text-align: center;
+    /* ... other styles */
+}
+
+.home-header {
+    /* Style for the header similar to your login page header, if any */
+    margin-bottom: 20px;
+    /* ... other styles */
+}
+
+/* You can define styles for other elements on your home page similar to login page */
+.home-button {
+    /* Example of a button style, adjust as needed */
+    background-color: #04AA6D;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.home-button:hover {
+    background-color: #45a049;
+}
+
+/* Add more styles as needed based on the loginPage.css content */
