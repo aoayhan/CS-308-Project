@@ -70,7 +70,27 @@ getSpotifyToken();// Initial token fetch
  app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
- 
+
+
+app.post('/api/register', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).send('Email and password are required.');
+    }
+
+    try {
+        const userRecord = await admin.auth().createUser({
+            email: email,
+            password: password,
+        });
+
+        res.status(201).send(`User created successfully: ${userRecord.uid}`);
+    } catch (error) {
+        console.error('Error creating new user:', error);
+        res.status(500).send(error.message);
+    }
+});
 app.post('/api/add-song', async (req, res) => {
     console.log("Received request for adding a song");
     const { songName, album, artist, year, rating, userId } = req.body;
@@ -346,7 +366,7 @@ app.post('/api/add-batch-songs', upload.single('songsFile'), async (req, res) =>
         res.status(500).send('Internal Server Error');
     }
 });
-app.get('/api/view-songs', async (req, res) => {
+app.post('/api/view-songs', async (req, res) => {
     // Assuming you retrieve and verify the user ID from the request
     // For example, let's say the user ID is stored in req.userId after verification
     //const userId = req.userId; // Replace with actual logic to retrieve user's ID
@@ -549,7 +569,8 @@ app.get('/api/recommend-songs', async (req, res) => {
     }
 });
 app.get('/api/recommend-friends-songs', async (req, res) => {
-    const { userEmail } = req.body;
+    const userEmail = req.query.userEmail;
+
 
     console.log('Starting friend song recommendation process for:', userEmail);
 
@@ -635,6 +656,105 @@ app.get('/api/recommend-friends-songs', async (req, res) => {
 
     } catch (error) {
         console.error('Error generating friend song recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/send-friend-request', async (req, res) => {
+    const { fromUserEmail, toUserEmail } = req.body;
+
+    // Add a friend request to the 'toUserEmail' pending requests
+    const toUserRef = admin.firestore().collection('users').doc(toUserEmail);
+    const fromUserRef = admin.firestore().collection('users').doc(fromUserEmail);
+
+    try {
+        await admin.firestore().runTransaction(async (transaction) => {
+            const toUserDoc = await transaction.get(toUserRef);
+            if (!toUserDoc.exists) {
+                throw new Error('Recipient user does not exist');
+            }
+            const fromUserDoc = await transaction.get(fromUserRef);
+            if (!fromUserDoc.exists) {
+                throw new Error('Sender user does not exist');
+            }
+
+            // Add to the recipient's pending requests if not already there
+            const pendingRequests = toUserDoc.data().pendingRequests || [];
+            if (pendingRequests.includes(fromUserEmail)) {
+                throw new Error('Friend request already sent');
+            }
+            transaction.update(toUserRef, {
+                pendingRequests: admin.firestore.FieldValue.arrayUnion(fromUserEmail)
+            });
+        });
+
+        res.status(200).send('Friend request sent successfully');
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+        res.status(500).send(error.message);
+    }
+});
+app.get('/api/view-friend-requests', async (req, res) => {
+    const userEmail = req.query.userEmail;
+
+    const userRef = admin.firestore().collection('users').doc(userEmail);
+    try {
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).send('User not found');
+        }
+
+        const pendingRequests = userDoc.data().pendingRequests || [];
+        res.status(200).json({ pendingRequests });
+    } catch (error) {
+        console.error('Error viewing friend requests:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/accept-friend-request', async (req, res) => {
+    const { userEmail, friendEmail } = req.body;
+
+    const userRef = admin.firestore().collection('users').doc(userEmail);
+    const friendRef = admin.firestore().collection('users').doc(friendEmail);
+
+    try {
+        await admin.firestore().runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            const friendDoc = await transaction.get(friendRef);
+            if (!userDoc.exists || !friendDoc.exists) {
+                throw new Error('One or both users not found');
+            }
+
+            // Remove the friendEmail from the user's pending requests
+            transaction.update(userRef, {
+                pendingRequests: admin.firestore.FieldValue.arrayRemove(friendEmail),
+                friends: admin.firestore.FieldValue.arrayUnion(friendEmail)
+            });
+
+            // Add the userEmail to the friend's friends list
+            transaction.update(friendRef, {
+                friends: admin.firestore.FieldValue.arrayUnion(userEmail)
+            });
+        });
+
+        res.status(200).send('Friend request accepted');
+    } catch (error) {
+        console.error('Error accepting friend request:', error);
+        res.status(500).send(error.message);
+    }
+});
+app.post('/api/reject-friend-request', async (req, res) => {
+    const { userEmail, friendEmail } = req.body;
+
+    const userRef = admin.firestore().collection('users').doc(userEmail);
+
+    try {
+        await userRef.update({
+            pendingRequests: admin.firestore.FieldValue.arrayRemove(friendEmail)
+        });
+
+        res.status(200).send('Friend request rejected');
+    } catch (error) {
+        console.error('Error rejecting friend request:', error);
         res.status(500).send('Internal Server Error');
     }
 });
