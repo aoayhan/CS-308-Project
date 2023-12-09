@@ -20,8 +20,8 @@ admin.initializeApp({
 const firestore = admin.firestore();
 
 //Spotify 
-const clientId = 'bf75c821e4df4ebf9808a680b5c702a4'; // Replace with your Spotify Client ID
-const clientSecret = '6679207e99094bb7a84eaf0d9d745089'; // Replace with your Spotify Client Secret
+const clientId = '839999e17bd94049b58605a96fcf0163'; // Replace with your Spotify Client ID
+const clientSecret = '3e1664060b134248aa2e8b6af323e25e'; // Replace with your Spotify Client Secret
 let accessToken = '';
 let tokenExpirationEpoch;
 
