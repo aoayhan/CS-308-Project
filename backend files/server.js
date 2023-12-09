@@ -758,3 +758,25 @@ app.post('/api/reject-friend-request', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+app.get('/api/get-user-friends', async (req, res) => {
+    const userEmail = req.query.userEmail; // You can also get this from authentication token after decoding
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        const userRef = admin.firestore().collection('users').doc(userEmail);
+        const doc = await userRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).send('User not found');
+        }
+
+        const userFriends = doc.data().friends || [];
+        res.status(200).json({ friends: userFriends });
+    } catch (error) {
+        console.error('Error getting user friends:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
