@@ -49,9 +49,9 @@ Position the Firebase configuration file in the project directory.
 Register for a Spotify Developer account and create an application to acquire the Client ID and Client Secret.
 Modify the addSongs.dart file by inserting your Spotify credentials.
 
-#API Documentation
+# API Documentation
 
-Add a Song
+## Add a Song
 
 * Endpoint: POST /api/add-song
 * Description: Add a song to the database along with Spotify track details.
@@ -72,7 +72,7 @@ Add a Song
     * Success: "Song added successfully with Spotify track ID"
     * Failure: Error message describing the issue.
   
-Delete a Song
+## Delete a Song
 
 * Endpoint: DELETE /api/delete-song
 * Description: Delete a song from the database and update user ratings.
@@ -89,7 +89,7 @@ Delete a Song
     * Success: "Song deleted successfully and ratings updated"
     * Failure: Error message describing the issue.
  
-Spotify Search
+## Spotify Search
 
 * Endpoint: GET /spotify-search
 * Description: Search for songs on Spotify and retrieve simplified information.
@@ -102,7 +102,7 @@ Spotify Search
     * Success: Array of simplified tracks, each containing songName, artistName, albumName, and year.
     * Failure: Error message describing the issue.
   
-Search for Songs in Database
+## Search for Songs in Database
 
 * Endpoint: GET /api/search-song
 * Description: Search for songs in the database by name.
@@ -117,7 +117,7 @@ Search for Songs in Database
     * Success: Array of songs matching the search query.
     * Failure: Error message describing the issue.
   
-View User Songs
+## View User Songs
 
 * Endpoint: POST /api/view-songs
 * Description: Retrieve songs associated with a specific user.
@@ -132,7 +132,7 @@ View User Songs
     * Failure: Error message describing the issue.
  
       
-Recommend Friends' Songs
+## Recommend Friends' Songs
 
 * Endpoint: GET /api/recommend-friends-songs
 * Description: Get song recommendations based on the top-rated songs of user's friends.
