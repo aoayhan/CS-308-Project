@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supotify/main.dart';
-
+import 'package:firebase_core/firebase_core.dart';
 class SongService {
   Future<List<dynamic>> recommendSongs(String userEmail) async {
     var url = Uri.parse('http://localhost:3000/api/recommend-songs?userEmail=$userEmail');
@@ -26,7 +26,7 @@ class RecommendSongsPage extends StatefulWidget {
 class _RecommendSongsPageState extends State<RecommendSongsPage> {
   // Initialize recommendedSongs with an empty list
   Future<List<dynamic>> recommendedSongs = Future.value([]);
-
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   @override
   void initState() {
     super.initState();
@@ -51,6 +51,18 @@ class _RecommendSongsPageState extends State<RecommendSongsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Recommended Songs'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              _auth.signOut();
+              // Perform logout logic here
+              // For example, navigate to the login page
+              Navigator.of(context).pop(); // Assuming you want to go back to the previous page
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+        
       ),
       body: FutureBuilder<List<dynamic>>(
         future: recommendedSongs,

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
 import 'package:supotify/main.dart';
+import 'package:supotify/views/addsongkurtarma.dart';
 import 'package:supotify/views/recommendSongs.dart';
 import 'package:supotify/views/addSongs.dart';
 import 'package:supotify/views/friendList.dart';
-
+import 'package:supotify/views/addSongs2.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 class homePage extends StatefulWidget {
   const homePage({super.key});
 
@@ -13,9 +17,24 @@ class homePage extends StatefulWidget {
 }
 
 class _homePageState extends State<homePage> {
+   final FirebaseAuth _auth = FirebaseAuth.instance;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              _auth.signOut();
+              // Perform logout logic here
+              // For example, navigate to the login page
+              Navigator.of(context).pop(); // Assuming you want to go back to the previous page
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: Center(
         child: Column(
           
@@ -29,7 +48,7 @@ class _homePageState extends State<homePage> {
             firebaseUIButton(context, "Songs", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const SongAddPage()));
+                        MaterialPageRoute(builder: (context) =>  UserSongs()));
                  
                 }),
             const SizedBox(height: 35,),

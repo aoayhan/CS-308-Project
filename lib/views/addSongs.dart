@@ -1,345 +1,229 @@
-import 'dart:convert';
-import 'dart:io' show File;
-import 'dart:html' as html;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:file_picker/file_picker.dart';
-
-class SongAddPage extends StatefulWidget {
-  const SongAddPage({Key? key}) : super(key: key);
-
+import 'dart:convert';
+import 'package:supotify/views/addSongs2.dart';
+import 'package:supotify/reusable_widgets/reusable_widget.dart';
+class UserSongs extends StatefulWidget {
   @override
-  _SongAddPageState createState() => _SongAddPageState();
+  _UserSongsPageState createState() => _UserSongsPageState();
 }
 
-class _SongAddPageState extends State<SongAddPage> {
-  final TextEditingController songNameController = TextEditingController();
-  final TextEditingController artistNameController = TextEditingController();
-  final TextEditingController albumNameController = TextEditingController();
-  final TextEditingController yearNameController = TextEditingController();
-
-  List<Song> songs = [];
-  List<Song> searchResults = [];
-  List<Song> userSongList = [];
-
-  final String clientId = 'bf75c821e4df4ebf9808a680b5c702a4';
-  final String clientSecret = '6679207e99094bb7a84eaf0d9d745089';
-
-  late User? currentUser;
+class _UserSongsPageState extends State<UserSongs> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final CollectionReference userSongCollection =
-      FirebaseFirestore.instance.collection('user_songs');
-
-  Future<void> addSong() async {
-    final String songName = songNameController.text;
-    final String artistName = artistNameController.text;
-    final String albumName = albumNameController.text;
-    final String yearName = yearNameController.text;
-
-    if (songName.isNotEmpty &&
-        artistName.isNotEmpty &&
-        albumName.isEmpty &&
-        yearName.isEmpty) {
-      setState(() {
-        songs.add(Song(songName, artistName));
-        songNameController.clear();
-        artistNameController.clear();
-        albumNameController.clear();
-        yearNameController.clear();
-      });
-    }
-  }
-
-  Future<String> getAccessToken() async {
-    final response = await http.post(
-      Uri.parse('https://accounts.spotify.com/api/token'),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization':
-            'Basic ${base64Encode(utf8.encode('$clientId:$clientSecret'))}',
-      },
-      body: 'grant_type=client_credentials',
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      return data['access_token'];
-    } else {
-      throw Exception('Failed to get Spotify token: ${response.statusCode}');
-    }
-  }
-
-  Future<void> searchSongs(String query) async {
-    searchResults.clear();
-
-    if (query.isEmpty) {
-      print('Empty search query. Please enter a search term.');
-      return;
-    }
-
-    try {
-      final accessToken = await getAccessToken();
-
-      print(
-          'Spotify API Request: https://api.spotify.com/v1/search?q=$query&type=track');
-
-      final response = await http.get(
-        Uri.parse('https://api.spotify.com/v1/search?q=$query&type=track'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> tracks = data['tracks']['items'];
-
-        for (final track in tracks) {
-          final String songName = track['name'];
-          final String artistName = track['artists'][0]['name'];
-          final String albumName = track['album']['name'];
-          final String yearName = track['album']['release_date'].substring(0, 4);
-              track['album']['release_date'].substring(0, 4);
-          searchResults.add(Song(songName, artistName));
-        }
-
-        print('Number of search results: ${searchResults.length}');
-      } else {
-        print('Failed to search songs. Status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to search songs');
-      }
-    } catch (e) {
-      print('Error during song search: $e');
-    }
-
-    setState(() {});
-  }
-
-  Future<void> fetchUserSongs() async {
-    try {
-      final querySnapshot = await userSongCollection
-          .where('userId', isEqualTo: currentUser!.uid)
-          .get();
-      final List<Song> userSongs = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Song(data['name'], data['artist']);
-      }).toList();
-
-      setState(() {
-        userSongList = userSongs;
-      });
-    } catch (e) {
-      print('Error fetching user songs: $e');
-    }
-  }
-
-  void removeUserSong(Song song) async {
-    final documentReference =
-        await userSongCollection.where('name', isEqualTo: song.name).get();
-
-    for (final doc in documentReference.docs) {
-      await doc.reference.delete();
-    }
-
-    await fetchUserSongs();
-  }
-
-  void addToUserList(Song selectedSong) async {
-    setState(() {
-      userSongList.add(selectedSong);
-    });
-
-    await userSongCollection.add({
-      'userId': currentUser!.uid,
-      'name': selectedSong.name,
-      'artist': selectedSong.artist,
-    });
-
-    await fetchUserSongs();
-  }
-
-  Future<void> addSongsFromJsonFile() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result != null) {
-        if (kIsWeb) {
-          final html.File file = html.File([result.files.single.bytes!], result.files.single.name!);
-
-          final html.FileReader reader = html.FileReader();
-          reader.readAsText(file);
-
-          await reader.onLoad.first;
-
-          final String contents = reader.result as String;
-          List<dynamic> songsData = json.decode(contents);
-
-          for (var songData in songsData) {
-            final String songName = songData['name'];
-            final String artistName = songData['artist'];
-            final String albumName = songData['album'] ?? '';
-            final String yearName = songData['year'].toString() ?? '';
-            final String rating = songData['rating'].toString() ?? '';
-
-            addToUserList(Song(songName, artistName));
-          }
-        } else {
-          File file = File(result.files.single.path!);
-          String contents = await file.readAsString();
-          List<dynamic> songsData = json.decode(contents);
-
-          for (var songData in songsData) {
-            final String songName = songData['name'];
-            final String artistName = songData['artist'];
-            final String albumName = songData['album'] ?? '';
-            final String yearName = songData['year'].toString() ?? '';
-            final String rating = songData['rating'].toString() ?? '';
-
-            addToUserList(Song(songName, artistName));
-          }
-        }
-      }
-    } catch (e) {
-      print('Error adding songs from JSON file: $e');
-    }
-  }
-
-  Future<void> _signIn() async {
-  try {
-    // Check if there's already a signed-in user
-    if (_auth.currentUser != null) {
-      currentUser = _auth.currentUser;
-      print('User already signed in: ${currentUser!.uid}');
-      await fetchUserSongs(); // Fetch user songs after signing in
-    } else {
-      // No user signed in, proceed with sign-in
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: "example@example.com", // Replace with the user's email
-        password: "password123", // Replace with the user's password
-      );
-
-      currentUser = userCredential.user;
-      print('Signed in: ${currentUser!.uid}');
-      await fetchUserSongs(); // Fetch user songs after signing in
-    }
-  } catch (e) {
-    print('Failed to sign in: $e');
-    // Handle the error or retry the sign-in if needed
-  }
-}
-
-
+  List<dynamic> userSongs = [];
+  List<dynamic> friendsTopSongs = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _signIn();
+    _fetchUserSongs();
+    _fetchFriendsTopSongs();
+  }
+
+  Future<void> _fetchUserSongs() async {
+    final User? user = _auth.currentUser;
+    final String? userId = user?.email;
+
+    if (userId != null) {
+      final url = 'http://localhost:3000/api/view-songs';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'userId': userId}),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          userSongs = json.decode(response.body);
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load songs. Please try again later.';
+          _isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        _errorMessage = 'No user signed in.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchFriendsTopSongs() async {
+    final User? user = _auth.currentUser;
+    final String? userEmail = user?.email;
+
+    if (userEmail != null) {
+      final url = 'http://localhost:3000/api/get-friends-top-songs?userEmail=$userEmail';
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          setState(() {
+            friendsTopSongs = json.decode(response.body);
+          });
+        } else {
+          print('Failed to load friends\' top songs');
+        }
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+  }
+
+  Future<void> _updateSongRating(String songName, String artistName, double newRating) async {
+    final User? user = _auth.currentUser;
+    final String? userId = user?.email;
+
+    if (userId != null) {
+      final url = 'http://localhost:3000/api/update-rating';
+      try {
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'songName': songName,
+            'userId': userId,
+            'artistName': artistName,
+            'newRating': newRating,
+          }),
+        );
+        if (response.statusCode == 200) {
+          print('Rating updated successfully');
+          _fetchUserSongs(); // Refresh the song list
+        } else {
+          print('Failed to update rating');
+        }
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteSong(String songName, String artistName) async {
+    final User? user = _auth.currentUser;
+    final String? userId = user?.email;
+
+    if (userId != null) {
+      final url = 'http://localhost:3000/api/delete-song';
+      try {
+        final response = await http.delete(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'songName': songName,
+            'artist': artistName,
+            'userId': userId,
+          }),
+        );
+        if (response.statusCode == 200) {
+          print('Song deleted successfully');
+          _fetchUserSongs(); // Refresh the song list
+        } else {
+          print('Failed to delete song');
+        }
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+  }
+
+  void _showRatingDialog(String songName, String artistName, double? currentRating) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select a Rating'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: List.generate(10, (index) => index + 1).map((rating) {
+                return GestureDetector(
+                  child: Text('$rating'),
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                    _updateSongRating(songName, artistName, rating.toDouble());
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home Page'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              _auth.signOut();
-              // Perform logout logic here
-              // For example, navigate to the login page
-              Navigator.of(context).pop(); // Assuming you want to go back to the previous page
-            },
-            icon: const Icon(Icons.logout),
+        title: Text('Your Songs and Friends\' Top Songs'),
+        actions: <Widget>[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SearchPage()));
+              },
+              style: ElevatedButton.styleFrom(
+                primary: Colors.green, // Button color
+                onPrimary: Colors.white, // Text color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: Text(
+                'Add-Delete Songs',
+                style: TextStyle(fontSize: 14), // Adjust font size as needed
+              ),
+            ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: userSongList.isNotEmpty
-                  ? ListView.builder(
-                      itemCount: userSongList.length,
-                      itemBuilder: (context, index) {
-                        final Song currentSong = userSongList[index];
-
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+              ? Center(child: Text(_errorMessage))
+              : ListView(
+                  children: [
+                    ExpansionTile(
+                      title: Text('Your Songs'),
+                      children: userSongs.map<Widget>((song) {
                         return ListTile(
-                          title: Text(currentSong.name),
-                          subtitle: Text(currentSong.artist),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              removeUserSong(currentSong);
-                            },
-                            child: const Text('Remove'),
+                          title: Text(song['name']),
+                          subtitle: Text('${song['artist']} - ${song['album']}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () => _deleteSong(song['name'], song['artist']),
+                              ),
+                              TextButton(
+                                child: Text(song['rating']?.toString() ?? 'Not Rated'),
+                                onPressed: () => _showRatingDialog(
+                                  song['name'], 
+                                  song['artist'], 
+                                  song['rating']?.toDouble(),
+                                ),
+                              ),
+                            ],
                           ),
                         );
-                      },
-                    )
-                  : const Center(
-                      child: Text('No songs found.'),
+                      }).toList(),
                     ),
-            ),
-            TextField(
-              onChanged: (query) {
-                searchSongs(query);
-              },
-              decoration: const InputDecoration(labelText: 'Search Songs'),
-            ),
-            Expanded(
-              child: searchResults.isNotEmpty
-                  ? ListView.builder(
-                      itemCount: searchResults.length,
-                      itemBuilder: (context, index) {
-                        final Song currentSong = searchResults[index];
-
-                        return ListTile(
-                          title: Text(currentSong.name),
-                          subtitle: Text(currentSong.artist),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              addToUserList(currentSong);
-                            },
-                            child: const Text('Add to List'),
-                          ),
-                        );
-                      },
-                    )
-                  : const Center(
-                      child: Text(
-                          'No results found for the given search query.'),
-                    ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                addSongsFromJsonFile();
-              },
-              child: const Text('Add JSON File'),
-            ),
-          ],
-        ),
-      ),
+                    ...friendsTopSongs.map((friend) => ExpansionTile(
+                          title: Text('Top songs of ${friend['friendEmail']}'),
+                          children: friend['songs'].map<Widget>((song) => ListTile(
+                                title: Text(song['name']),
+                                subtitle: Text('${song['artist']} - ${song['album']}'),
+                              )).toList(),
+                        )),
+                  ],
+                ),
     );
   }
-}
-
-class Song {
-  final String name;
-  final String artist;
-
-  Song(this.name, this.artist);
-}
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MaterialApp(
-    home: SongAddPage(),
-  ));
 }

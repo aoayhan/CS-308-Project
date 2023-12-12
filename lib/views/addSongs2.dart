@@ -1,241 +1,482 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io' show File;
+import 'package:supotify/reusable_widgets/reusable_widget.dart';
+import 'package:supotify/views/addSongs.dart';
 
-class SongAddPage2 extends StatefulWidget {
-  const SongAddPage2({Key? key}) : super(key: key);
-
+class AddSongPage2 extends StatelessWidget {
   @override
-  _SongAddPageState2 createState() => _SongAddPageState2();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Spotify Search',
+      
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: SearchPage(),
+    );
+  }
 }
 
-class _SongAddPageState2 extends State<SongAddPage2> {
-  final TextEditingController songNameController = TextEditingController();
-  final TextEditingController artistNameController = TextEditingController();
-  final TextEditingController albumNameController = TextEditingController();
-  final TextEditingController yearNameController = TextEditingController();
-  List<Song> songs = [];
-  List<Song> searchResults = [];
+class SearchPage extends StatefulWidget {
+  @override
+  _SearchPageState createState() => _SearchPageState();
+}
 
-  // Replace these with your actual Spotify API credentials
-  final String clientId = 'bf75c821e4df4ebf9808a680b5c702a4';
-  final String clientSecret = '6679207e99094bb7a84eaf0d9d745089';
+class _SearchPageState extends State<SearchPage> {
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _songNameController = TextEditingController();
+  final TextEditingController _artistController = TextEditingController();
+  final TextEditingController _albumController = TextEditingController();
+  final TextEditingController _yearController = TextEditingController();
+  List<SimplifiedTrack> _searchResults = [];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  final CollectionReference songsCollection =
-      FirebaseFirestore.instance.collection('songs');
-
-  Future<void> addSongToFirebase() async {
-    final String songName = songNameController.text;
-    final String artistName = artistNameController.text;
-    final String albumName = albumNameController.text;
-    final String yearName = yearNameController.text;
-
-    if (songName.isNotEmpty &&
-        artistName.isNotEmpty &&
-        albumName.isNotEmpty &&
-        yearName.isNotEmpty) {
-      // Add the song to Firebase Firestore
-      await songsCollection.add({
-        'id': UniqueKey().toString(), // Generating a unique identifier for the song
-        'name': songName,
-        'performers': artistName.split(','),
-        'album': albumName,
-        'year': yearName,
-        'edit': 'Original', // Assuming a default edit/version
+  Future<void> searchSong(String query) async {
+    final url = 'http://localhost:3000/spotify-search?q=${Uri.encodeComponent(query)}';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      setState(() {
+        _searchResults = data.map((e) => SimplifiedTrack.fromJson(e)).toList();
       });
+    } else {
+      throw Exception('Failed to load songs');
+    }
+  }
 
-      // Clear text controllers after adding the song
-      songNameController.clear();
-      artistNameController.clear();
-      albumNameController.clear();
-      yearNameController.clear();
+  Future<void> addSong(SimplifiedTrack track, int rating) async {
+    final User? user = _auth.currentUser;
+    final String? userId = user?.email;
 
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final url = 'http://localhost:3000/api/add-song';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, dynamic>{
+        'songName': track.songName,
+        'album': track.albumName,
+        'artist': track.artistName,
+        'year': track.year,
+        'rating': rating,
+        'userId': userId,
+      }),
+    );
+
+    if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Song added to Firebase')),
+        SnackBar(content: Text('Song added successfully')),
+      );
+    } else {
+      throw Exception('Failed to add song: ${response.body}');
+    }
+  }
+
+  void showRatingDialog(SimplifiedTrack track) {
+    final _ratingController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Rate ${track.songName}'),
+          content: TextField(
+            controller: _ratingController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              hintText: 'Enter a rating from 1 to 10',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Submit'),
+              onPressed: () {
+                final rating = int.tryParse(_ratingController.text);
+                if (rating != null && rating > 0 && rating <= 10) {
+                  addSong(track, rating);
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter a valid rating')),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> uploadBatchSongs(File file) async {
+    try {
+      final url = 'http://localhost:3000/api/add-batch-songs';
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..files.add(
+          await http.MultipartFile.fromBytes(
+            'songsFile',
+            await file.readAsBytes(),
+            filename: 'songsFile.json',
+          ),
+        );
+
+      final response = await http.Response.fromStream(await request.send());
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Songs added successfully')),
+        );
+      } else {
+        throw Exception('Failed to add batch songs: ${response.body}');
+      }
+    } catch (error) {
+      print('Error uploading batch songs: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading batch songs')),
       );
     }
   }
 
-  Future<String> getAccessToken() async {
-    final response = await http.post(
-      Uri.parse('https://accounts.spotify.com/api/token'),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
-      },
-      body: 'grant_type=client_credentials',
+  Future<void> _pickAndUploadFile() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+
+    if (result != null) {
+      final file = File(result.files.single.path!);
+      await uploadBatchSongs(file);
+    }
+  }
+
+  Future<void> addSongByInput() async {
+  final songName = _songNameController.text;
+  final artist = _artistController.text;
+  final album = _albumController.text;
+  final year = _yearController.text;
+
+  if (songName.isEmpty || artist.isEmpty || album.isEmpty || year.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please fill in all fields')),
+    );
+    return;
+  }
+
+  final User? user = _auth.currentUser;
+  final String? userId = user?.email;
+
+  if (userId == null) {
+    throw Exception('User not logged in');
+  }
+
+  final url = 'http://localhost:3000/api/add-song';
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, dynamic>{
+      'songName': songName,
+      'album': album,
+      'artist': artist,
+      'year': year,
+      'userId': userId,
+    }),
+  );
+
+  if (response.statusCode == 201) {
+    // If the song is added successfully, show the rating dialog
+    final SimplifiedTrack track = SimplifiedTrack(
+      songName: songName,
+      artistName: artist,
+      albumName: album,
+      year: year,
+    );
+    showRatingDialog(track);
+  } else {
+    throw Exception('Failed to add song: ${response.body}');
+  }
+}
+
+ Future<void> deleteSong(String songName, String artistName) async {
+    final User? user = _auth.currentUser;
+    final String? userId = user?.email;
+
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final url = 'http://localhost:3000/api/delete-song';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'songName': songName,
+        'artist': artistName,
+        'userId': userId,
+      }),
     );
 
     if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      return data['access_token'];
-    } else {
-      throw Exception('Failed to get Spotify token: ${response.statusCode}');
-    }
-  }
-
-  Future<void> searchSongs(String query) async {
-    searchResults.clear();
-
-    if (query.isEmpty) {
-      print('Empty search query. Please enter a search term.');
-      return;
-    }
-
-    try {
-      final accessToken = await getAccessToken();
-
-      // Print the Spotify API request URL for debugging
-      print('Spotify API Request: https://api.spotify.com/v1/search?q=$query&type=track');
-
-      final response = await http.get(
-        Uri.parse('https://api.spotify.com/v1/search?q=$query&type=track'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> tracks = data['tracks']['items'];
-
-        for (final track in tracks) {
-          final String songId = track['id']; // Unique identifier for the song
-          final String songName = track['name'];
-          final List<String> performers = List<String>.from(track['artists'].map((artist) => artist['name']));
-          final String albumName = track['album']['name'];
-          final String yearName = track['album']['release_date'].substring(0, 4);
-          final String editName = track['type']; // Assuming 'type' provides information about the edit/version
-          searchResults.add(Song(songId, songName, performers, albumName, yearName, editName));
-        }
-
-        // Fetch songs from Firebase and add them to the search results
-        final QuerySnapshot firebaseSongs = await songsCollection.get();
-        firebaseSongs.docs.forEach((doc) {
-          final String songId = doc['id'];
-          final String songName = doc['name'];
-          final List<String> performers = List<String>.from(doc['performers']);
-          final String albumName = doc['album'];
-          final String yearName = doc['year'];
-          final String editName = doc['edit'];
-          searchResults.add(Song(songId, songName, performers, albumName, yearName, editName));
-        });
-
-        // Print the number of search results for debugging
-        print('Number of search results: ${searchResults.length}');
-      } else {
-        // Print detailed error information for debugging
-        print('Failed to search songs. Status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to search songs');
-      }
-    } catch (e) {
-      // Print any exceptions that might occur
-      print('Error during song search: $e');
-    }
-    // Update the UI by calling setState
-    setState(() {});
-  }
-
-  void removeSong(String songId) async {
-    try {
-      // Remove the song from Firebase
-      await songsCollection.doc(songId).delete();
-
-      // Remove the song from the search results
-      searchResults.removeWhere((song) => song.songId == songId);
-
-      // Update the UI by calling setState
-      setState(() {});
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Song removed from Firebase')),
+        SnackBar(content: Text('Song deleted successfully')),
       );
-    } catch (e) {
-      print('Error during song removal: $e');
+    } else {
+      throw Exception('Failed to delete song: ${response.body}');
     }
   }
+
+Future<void> deleteSongsByAlbum(String albumName) async {
+    final url = 'http://localhost:3000/api/delete-songs-by-album';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({'album': albumName}),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('All songs in the album deleted successfully')),
+      );
+    } else {
+      throw Exception('Failed to delete songs: ${response.body}');
+    }
+  }
+  
+  Future<void> deleteSongsByArtist(String artistName) async {
+    final User? user = _auth.currentUser;
+    final String? userEmail = user?.email;
+
+    if (userEmail == null) {
+      throw Exception('User not logged in');
+    }
+
+    final url = 'http://localhost:3000/api/delete-songs-by-artist';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'artist': artistName,
+        'userEmail': userEmail,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('All songs by the artist deleted successfully')),
+      );
+    } else {
+      throw Exception('Failed to delete songs: ${response.body}');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home Page'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            TextField(
-              controller: songNameController,
-              decoration: const InputDecoration(labelText: 'Song Name'),
-            ),
-            TextField(
-              controller: artistNameController,
-              decoration: const InputDecoration(labelText: 'Artist Name (comma-separated for multiple artists)'),
-            ),
-            TextField(
-              controller: albumNameController,
-              decoration: const InputDecoration(labelText: 'Album Name'),
-            ),
-            TextField(
-              controller: yearNameController,
-              decoration: const InputDecoration(labelText: 'Year'),
-            ),
-            ElevatedButton(
-              onPressed: addSongToFirebase,
-              child: const Text('Add Song to Firebase'),
-            ),
-            TextField(
-              onChanged: (query) {
-                searchSongs(query);
+        title: Text('Flutter Spotify Search'),
+        actions: <Widget>[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => UserSongs()));
               },
-              decoration: const InputDecoration(labelText: 'Search Songs'),
+              style: ElevatedButton.styleFrom(
+                primary: Colors.green, // Button color
+                onPrimary: Colors.white, // Text color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: Text(
+                'Your Songs',
+                style: TextStyle(fontSize: 14), // Adjust font size as needed
+              ),
             ),
-            Expanded(
-              child: searchResults.isNotEmpty
-                  ? ListView.builder(
-                      itemCount: searchResults.length,
-                      itemBuilder: (context, index) {
-                        final Song currentSong = searchResults[index];
-
-                        return ListTile(
-                          title: Text(currentSong.name),
-                          subtitle: Text(
-                            'Artist: ${currentSong.performers.join(', ')}\nAlbum: ${currentSong.album}',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ElevatedButton(
-                                onPressed: () {
-                                  // Call a function to remove the song
-                                  removeSong(currentSong.songId);
-                                },
-                                child: const Text('Remove'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    )
-                  : Center(
-                      child: Text('No results found for the given search query.'),
-                    ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _pickAndUploadFile(); // You can replace this with your desired action
+            },
+            
+            child: Text('Upload JSON'),
+          ),
+          
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _songNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Song Name',
+                  ),
+                ),
+                TextField(
+                  controller: _artistController,
+                  decoration: InputDecoration(
+                    labelText: 'Artist',
+                  ),
+                ),
+                TextField(
+                  controller: _albumController,
+                  decoration: InputDecoration(
+                    labelText: 'Album',
+                  ),
+                ),
+                TextField(
+                  controller: _yearController,
+                  decoration: InputDecoration(
+                    labelText: 'Year',
+                  ),
+                ),
+                Row(
+            children: [
+              ElevatedButton(
+                onPressed: addSongByInput,
+                child: Text('Add Song'),
+              ),
+              SizedBox(width: 8), // Spacing between the buttons
+              ElevatedButton(
+                onPressed: () {
+                  final songName = _songNameController.text;
+                  final artist = _artistController.text;
+                  if (songName.isNotEmpty && artist.isNotEmpty) {
+                    deleteSong(songName, artist);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter song name and artist')),
+                    );
+                  }
+                },
+                child: Text('Remove Song'),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.red, // Button color for delete
+                ),
+              ),
+              SizedBox(width: 8),
+               ElevatedButton(
+            onPressed: () {
+              final albumName = _albumController.text;
+              if (albumName.isNotEmpty) {
+                deleteSongsByAlbum(albumName);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please enter an album name')),
+                );
+              }
+            },
+            child: Text('Remove Album'),
+            style: ElevatedButton.styleFrom(
+              primary: Colors.red,
             ),
-          ],
-        ),
+          ),
+          SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  final artistName = _artistController.text;
+                  if (artistName.isNotEmpty && _albumController.text.isEmpty && _songNameController.text.isEmpty && _yearController.text.isEmpty) {
+                    deleteSongsByArtist(artistName);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter only the artist name')),
+                    );
+                  }
+                },
+                child: Text('Remove Artist'),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.red,
+                ),
+              ),
+          
+            ],
+          ),
+                
+                 /*firebaseUIButton(context, "My Songs", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => UserSongs()));
+                 
+                }),*/
+              ],
+            ),
+          ),
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              labelText: 'Search for a song',
+              suffixIcon: IconButton(
+                icon: Icon(Icons.search),
+                onPressed: () => searchSong(_searchController.text),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _searchResults.length,
+              itemBuilder: (context, index) {
+                final track = _searchResults[index];
+                return ListTile(
+                  title: Text(track.songName),
+                  subtitle: Text('${track.artistName} - ${track.albumName}'),
+                  trailing: IconButton(
+                    icon: Icon(Icons.add),
+                    onPressed: () {
+                      showRatingDialog(track);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class Song {
-  final String songId;
-  final String name;
-  final List<String> performers;
-  final String album;
+class SimplifiedTrack {
+  final String songName;
+  final String artistName;
+  final String albumName;
   final String year;
-  final String edit;
 
-  Song(this.songId, this.name, this.performers, this.album, this.year, this.edit);
+  SimplifiedTrack({
+    required this.songName,
+    required this.artistName,
+    required this.albumName,
+    required this.year,
+  });
+
+  factory SimplifiedTrack.fromJson(Map<String, dynamic> json) {
+    return SimplifiedTrack(
+      songName: json['songName'],
+      artistName: json['artistName'],
+      albumName: json['albumName'],
+      year: json['year'],
+    );
+  }
 }
