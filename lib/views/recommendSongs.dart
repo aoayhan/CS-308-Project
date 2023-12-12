@@ -46,47 +46,95 @@ class _RecommendSongsPageState extends State<RecommendSongsPage> {
     return user?.email; // Returns null if no user is signed in
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Recommended Songs'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              _auth.signOut();
-              // Perform logout logic here
-              // For example, navigate to the login page
-              Navigator.of(context).pop(); // Assuming you want to go back to the previous page
-            },
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-        
-      ),
-      body: FutureBuilder<List<dynamic>>(
-        future: recommendedSongs,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          } else if (snapshot.hasData) {
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                var song = snapshot.data![index];
-                return ListTile(
-                  title: Text(song['songName']),
-                  subtitle: Text('${song['artistName']} - ${song['albumName']}'),
-                );
-              },
-            );
-          } else {
-            return Text('No recommendations available.');
+Future<List<String>> fetchRecommendedFriendsSongs() async {
+    final User? user = _auth.currentUser;
+    final String? userEmail = user?.email;
+
+    List<String> recommendationsList = [];
+
+    if (userEmail != null) {
+      final url = 'http://localhost:3000/api/recommend-friends-songs?userEmail=$userEmail';
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          List<String> lines = response.body.split('\n');
+          for (String line in lines) {
+            // Process each line
+            if (line.isNotEmpty) {
+              recommendationsList.add(line);
+            }
           }
-        },
-      ),
-    );
+        } else {
+          print('Failed to load friends\' top songs');
+        }
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+
+    return recommendationsList;
   }
+
+  @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Recommended Songs'),
+      actions: [
+        IconButton(
+          onPressed: () {
+            _auth.signOut();
+            Navigator.of(context).pop();
+          },
+          icon: const Icon(Icons.logout),
+        ),
+      ],
+    ),
+    body: ListView(
+      children: [
+        FutureBuilder<List<dynamic>>(
+          future: recommendedSongs,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              return ExpansionTile(
+                title: const Text('Your Recommendations'),
+                children: snapshot.data!
+                    .map<Widget>((song) => ListTile(
+                          title: Text(song['songName']),
+                          subtitle: Text('${song['artistName']} - ${song['albumName']}'),
+                        ))
+                    .toList(),
+              );
+            } else {
+              return const ListTile(title: Text('No personal recommendations available.'));
+            }
+          },
+        ),
+        FutureBuilder<List<String>>(
+          future: fetchRecommendedFriendsSongs(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              return ExpansionTile(
+                title: const Text("Friends' Recommendations"),
+                children: snapshot.data!
+                    .map<Widget>((line) => Text(line))
+                    .toList(),
+              );
+            } else {
+              return const ListTile(title: Text("No friends' recommendations available."));
+            }
+          },
+        ),
+      ],
+    ),
+  );
+}
 }
