@@ -1,0 +1,20 @@
+/* Add this to your existing CSS or create a new CSS file */
+.import-song-container {
+    width: 50%;
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.import-song-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.import-song-message {
+    margin-top: 20px;
+    color: green; /* Adjust the color based on success or error */
+}
