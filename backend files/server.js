@@ -20,8 +20,10 @@ admin.initializeApp({
 const firestore = admin.firestore();
 
 //Spotify 
+
 const clientId = '839999e17bd94049b58605a96fcf0163'; // Replace with your Spotify Client ID
 const clientSecret = '3e1664060b134248aa2e8b6af323e25e'; // Replace with your Spotify Client Secret
+
 let accessToken = '';
 let tokenExpirationEpoch;
 
@@ -66,12 +68,9 @@ getSpotifyToken();// Initial token fetch
         res.status(403).send('Invalid token');
     }
 };
-
  app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
-
-
 app.post('/api/register', async (req, res) => {
     const { email, password } = req.body;
 
@@ -83,6 +82,13 @@ app.post('/api/register', async (req, res) => {
         const userRecord = await admin.auth().createUser({
             email: email,
             password: password,
+        });
+
+        // After successful creation, add the user to the Firestore 'users' collection
+        await admin.firestore().collection('users').doc(email).set({
+            email: email,
+            friends: [],
+            pendingRequests: []
         });
 
         res.status(201).send(`User created successfully: ${userRecord.uid}`);
@@ -203,27 +209,28 @@ app.delete('/api/delete-song', async (req, res) => {
     }
 });
 app.delete('/api/delete-songs-by-artist', async (req, res) => {
-    const { artist } = req.body;
+    const { artist, userEmail } = req.body;  // Assuming you send the userEmail in the body of the request
 
-    if (!artist) {
-        return res.status(400).send('Artist name is required');
+    if (!artist || !userEmail) {
+        return res.status(400).send('Artist name and user email are required');
     }
 
     try {
         const songCollectionRef = admin.firestore().collection('song');
-        const querySnapshot = await songCollectionRef.where('artist', '==', artist).get();
+        // Add a condition to the query to match the userId field with the provided userEmail
+        const querySnapshot = await songCollectionRef.where('artist', '==', artist).where('userId', '==', userEmail).get();
         
         if (querySnapshot.empty) {
-            return res.status(404).send('No songs found for this artist');
+            return res.status(404).send('No songs found for this artist associated with the given user');
         }
 
         querySnapshot.forEach(doc => {
             doc.ref.delete();
         });
 
-        res.send('All songs by the artist deleted successfully');
+        res.send('All songs by the artist for the given user deleted successfully');
     } catch (error) {
-        console.error('Error deleting songs by artist:', error);
+        console.error('Error deleting songs by artist for user:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -287,12 +294,12 @@ app.get('/spotify-search', async (req, res) => {
     });
     const data = await response.json();
   
-    // Process the data to only include song name, artist name, album name, and popularity
+    // Process the data to only include song name, artist name, album name, and year of release
     const simplifiedTracks = data.tracks.items.map(track => ({
       songName: track.name,
       artistName: track.artists.map(artist => artist.name).join(", "),
       albumName: track.album.name,
-      popularity: track.popularity
+      year: track.album.release_date.split("-")[0] // Extracts the year from the release date
     }));
   
     // Send the simplified data
@@ -367,9 +374,6 @@ app.post('/api/add-batch-songs', upload.single('songsFile'), async (req, res) =>
     }
 });
 app.post('/api/view-songs', async (req, res) => {
-    // Assuming you retrieve and verify the user ID from the request
-    // For example, let's say the user ID is stored in req.userId after verification
-    //const userId = req.userId; // Replace with actual logic to retrieve user's ID
     const { userId } = req.body;
     
     try {
@@ -608,7 +612,7 @@ app.get('/api/recommend-friends-songs', async (req, res) => {
             const topFriendSongs = friendRatings
                 .filter(rating => rating.rating && rating.rating >= 4)
                 .sort((a, b) => b.rating - a.rating)
-                .slice(0, 5); // Take top 5 rated songs from friend
+                .slice(0, 3); // Take top 5 rated songs from friend
 
             for (const seedTrack of topFriendSongs) {
                 if (!seedTrack.spotifyTrackId) {
@@ -777,6 +781,411 @@ app.get('/api/get-user-friends', async (req, res) => {
         res.status(200).json({ friends: userFriends });
     } catch (error) {
         console.error('Error getting user friends:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/rate-song', async (req, res) => {
+    const { songId, userId, newRating } = req.body;
+
+    if (!songId || !userId || isNaN(newRating)) {
+        return res.status(400).send('Invalid input');
+    }
+
+    try {
+        const songRef = admin.firestore().collection('song').doc(songId);
+        const songDoc = await songRef.get();
+
+        if (!songDoc.exists) {
+            return res.status(404).send('Song not found');
+        }
+
+        // Update rating and add to rating history
+        const currentRating = songDoc.data().rating;
+        await songRef.update({ rating: newRating });
+        if (currentRating !== undefined) {
+            const ratingHistoryRef = songRef.collection('ratingHistory');
+            await ratingHistoryRef.add({
+                oldRating: currentRating,
+                newRating,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                userId
+            });
+        }
+
+        res.status(200).send('Rating updated successfully');
+    } catch (error) {
+        console.error('Error rating song:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/update-rating', async (req, res) => {
+    console.log("Request received to update rating"); // Log when a request is received
+    const { songName, userId, artistName, newRating } = req.body;
+
+    console.log(`Request body:`, req.body); // Log the body of the request
+
+    if (!songName || !userId || !artistName || newRating === undefined) {
+        console.log('Missing required fields'); // Log missing required fields
+        return res.status(400).send('Song name, user ID, artist name, and new rating are required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('song');
+        const querySnapshot = await songsRef.where('name', '==', songName)
+                                             .where('userId', '==', userId)
+                                             .where('artist', '==', artistName)
+                                             .get();
+
+        if (querySnapshot.empty) {
+            console.log(`Song not found with provided details`); // Log if the song does not exist
+            return res.status(404).send('Song not found');
+        }
+
+        const songDoc = querySnapshot.docs[0]; // Assuming the first document is the correct one
+        console.log(`Updating rating for song: ${songName}`); // Log updating existing rating
+        await songDoc.ref.update({ rating: newRating });
+
+        console.log(`Rating updated successfully for song: ${songName}`); // Log successful update
+        res.status(200).send('Rating updated successfully');
+    } catch (error) {
+        console.error('Error updating rating:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/get-friends-top-songs', async (req, res) => {
+    const userEmail = req.query.userEmail;
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        // Fetch the user's document to get the friend list
+        const userRef = admin.firestore().collection('users').doc(userEmail);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).send('User not found');
+        }
+
+        const userFriends = userDoc.data().friends || [];
+
+        let friendsTopSongs = [];
+
+        // Fetch top 3 rated songs of each friend
+        for (const friendEmail of userFriends) {
+            const friendSongsRef = admin.firestore().collection('song');
+            const querySnapshot = await friendSongsRef.where('userId', '==', friendEmail)
+                                                     .orderBy('rating', 'desc')
+                                                     .limit(3)
+                                                     .get();
+
+            let friendSongs = [];
+            querySnapshot.forEach(doc => {
+                friendSongs.push(doc.data());
+            });
+
+            if (friendSongs.length > 0) {
+                friendsTopSongs.push({
+                    friendEmail,
+                    songs: friendSongs
+                });
+            }
+        }
+
+        res.status(200).json(friendsTopSongs);
+    } catch (error) {
+        console.error('Error fetching friends\' top songs:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/top-songs-from-era', async (req, res) => {
+    console.log("Request received to get top songs from an era"); // Log when a request is received
+
+    const { userId, startYear, endYear, limit } = req.query;
+
+    if (!userId || !startYear || !endYear || !limit) {  
+        return res.status(400).send('All parameters are required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('song');
+        const querySnapshot = await songsRef
+            .where('userId', '==', userId)
+            .where('year', '>=', parseInt(startYear))
+            .where('year', '<=', parseInt(endYear))
+            .orderBy('year')
+            .orderBy('rating', 'desc')
+            .limit(parseInt(limit))
+            .get();
+
+        let song = [];
+        querySnapshot.forEach(doc => {
+            song.push(doc.data());
+        });
+
+        res.status(200).json(song);
+    } catch (error) {
+        console.error('Error getting top songs from era:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/get-top-artist', async (req, res) => {
+    const userEmail = req.query.userEmail;
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('songs');
+        // Fetch only the songs with ratings
+        const querySnapshot = await songsRef
+            .where('userId', '==', userEmail)
+            .where('rating', '!=', null)
+            .get();
+
+        let artistRatings = {};
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            const { artist, rating } = song;
+            if (rating !== null) {
+                if (!artistRatings[artist]) {
+                    artistRatings[artist] = {
+                        totalRating: rating,
+                        count: 1
+                    };
+                } else {
+                    artistRatings[artist].totalRating += rating;
+                    artistRatings[artist].count += 1;
+                }
+            }
+        });
+
+        let topArtist = null;
+        let highestAverage = 0;
+
+        for (const artist in artistRatings) {
+            const averageRating = artistRatings[artist].totalRating / artistRatings[artist].count;
+            if (averageRating > highestAverage) {
+                highestAverage = averageRating;
+                topArtist = artist;
+            }
+        }
+
+        if (topArtist) {
+            res.status(200).json({ topArtist, averageRating: highestAverage });
+        } else {
+            res.status(404).send('No top artist found');
+        }
+    } catch (error) {
+        console.error('Error fetching top artist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/create-friend-group', async (req, res) => {
+    const { userEmail, groupName } = req.body;
+    console.log("Request received to create friend group"); // Log when a request is received
+
+    if (!userEmail || !groupName) {
+        return res.status(400).send('Missing required fields: userEmail and groupName');
+    }
+
+    // Sanitize groupName to make it a valid Firestore document ID if necessary
+    const sanitizedGroupName = groupName.replace(/[^a-zA-Z0-9]/g, '_'); // Example of sanitization
+
+    try {
+        const userRef = admin.firestore().collection('users').doc(userEmail);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).send('User not found');
+        }
+
+        // Check if a group with the same name already exists
+        const existingGroupRef = admin.firestore().collection('friendGroups').doc(sanitizedGroupName);
+        const existingGroupDoc = await existingGroupRef.get();
+        if (existingGroupDoc.exists) {
+            return res.status(409).send(`A friend group with the name '${groupName}' already exists.`);
+        }
+
+        await existingGroupRef.set({
+            name: groupName,
+            createdBy: userEmail,
+            members: [userEmail],
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(201).send(`Friend group '${groupName}' created successfully`);
+    } catch (error) {
+        console.error('Error creating friend group:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/add-friends-to-group', async (req, res) => {
+    const { userEmail, groupName, friendEmails } = req.body;
+
+    if (!userEmail || !groupName || !Array.isArray(friendEmails)) {
+        return res.status(400).send('Missing required fields: userEmail, groupName, and friendEmails');
+    }
+
+    // Sanitize groupName to make it a valid Firestore document ID if necessary
+    const sanitizedGroupName = groupName.replace(/[^a-zA-Z0-9]/g, '_'); // Example of sanitization
+
+    try {
+        // Verify the user
+        const userRef = admin.firestore().collection('users').doc(userEmail);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).send('User not found');
+        }
+
+        // Verify the friend group by name
+        const groupRef = admin.firestore().collection('friendGroups').doc(sanitizedGroupName);
+        const groupDoc = await groupRef.get();
+        if (!groupDoc.exists) {
+            return res.status(404).send('Friend group not found');
+        }
+
+        // Check if the user is authorized to add friends (e.g., the creator or a member of the group)
+        const groupData = groupDoc.data();
+        if (groupData.createdBy !== userEmail && !groupData.members.includes(userEmail)) {
+            return res.status(403).send('User is not authorized to add friends to this group');
+        }
+
+        // Check if all friends to be added are in the user's friend list
+        const userFriends = userDoc.data().friends || [];
+        const nonFriendEmails = friendEmails.filter(email => !userFriends.includes(email));
+        if (nonFriendEmails.length > 0) {
+            return res.status(400).send(`These emails are not your friends: ${nonFriendEmails.join(', ')}`);
+        }
+
+        // Add friends to the group
+        await groupRef.update({
+            members: admin.firestore.FieldValue.arrayUnion(...friendEmails)
+        });
+
+        res.status(200).send('Friends added to the group successfully');
+    } catch (error) {
+        console.error('Error adding friends to the group:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/remove-friends-from-group', async (req, res) => {
+    const { userEmail, groupName, memberEmails } = req.body;
+
+    if (!userEmail || !groupName || !Array.isArray(memberEmails)) {
+        return res.status(400).send('Missing required fields: userEmail, groupName, and memberEmails');
+    }
+
+    // Sanitize groupName to make it a valid Firestore document ID if necessary
+    const sanitizedGroupName = groupName.replace(/[^a-zA-Z0-9]/g, '_'); // Example of sanitization
+
+    try {
+        // Verify the friend group by name
+        const groupRef = admin.firestore().collection('friendGroups').doc(sanitizedGroupName);
+        const groupDoc = await groupRef.get();
+        if (!groupDoc.exists) {
+            return res.status(404).send('Friend group not found');
+        }
+
+        // Check if the user is the creator of the group
+        const groupData = groupDoc.data();
+        if (groupData.createdBy !== userEmail) {
+            return res.status(403).send('User is not authorized to remove friends from this group');
+        }
+
+        // Remove friends from the group
+        await groupRef.update({
+            members: admin.firestore.FieldValue.arrayRemove(...memberEmails)
+        });
+
+        res.status(200).send('Friends removed from the group successfully');
+    } catch (error) {
+        console.error('Error removing friends from the group:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/analyze-group-favorites', async (req, res) => {
+    const { groupName } = req.body;
+
+    if (!groupName) {
+        return res.status(400).send('Missing required field: groupName');
+    }
+
+    const sanitizedGroupName = groupName.replace(/[^a-zA-Z0-9]/g, '_');
+
+    try {
+        const groupRef = admin.firestore().collection('friendGroups').doc(sanitizedGroupName);
+        const groupDoc = await groupRef.get();
+
+        if (!groupDoc.exists) {
+            return res.status(404).send('Friend group not found');
+        }
+
+        const groupData = groupDoc.data();
+        const memberEmails = groupData.members;
+        let groupTopSongs = [];
+
+        for (const memberEmail of memberEmails) {
+            const userDoc = await admin.firestore().collection('users').doc(memberEmail).get();
+
+            if (!userDoc.exists) {
+                console.log(`User document not found for email: ${memberEmail}`);
+                continue;
+            }
+
+            const userRatings = userDoc.data().ratings || [];
+            const topRatings = userRatings.sort((a, b) => b.rating - a.rating).slice(0, 3);
+
+            topRatings.forEach(song => {
+                groupTopSongs.push({
+                    userEmail: memberEmail,
+                    songName: song.songName, // Assuming you have songId in the ratings
+                    ...song
+                });
+            });
+        }
+
+        console.log(`Top songs to add: ${JSON.stringify(groupTopSongs)}`);
+
+        if (groupTopSongs.length > 0) {
+            await groupRef.update({ topSongs: groupTopSongs });
+            console.log('Group favorites updated successfully.');
+        } else {
+            console.log('No top songs to add.');
+        }
+
+        res.status(200).send('Group favorites analyzed and top songs added successfully');
+    } catch (error) {
+        console.error('Error analyzing group favorites:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/api/clear-group-top-songs', async (req, res) => {
+    const { groupName } = req.body;
+
+    if (!groupName) {
+        return res.status(400).send('Missing required field: groupName');
+    }
+
+    const sanitizedGroupName = groupName.replace(/[^a-zA-Z0-9]/g, '_');
+
+    try {
+        const groupRef = admin.firestore().collection('friendGroups').doc(sanitizedGroupName);
+        const groupDoc = await groupRef.get();
+
+        if (!groupDoc.exists) {
+            return res.status(404).send('Friend group not found');
+        }
+
+        // Clear the topSongs field by setting it to an empty array
+        await groupRef.update({ topSongs: [] });
+
+        res.status(200).send('Top rated songs have been cleared from the group.');
+    } catch (error) {
+        console.error('Error clearing top rated songs from the group:', error);
         res.status(500).send('Internal Server Error');
     }
 });
