@@ -77,7 +77,6 @@ setInterval(() => {
 }, 1000 * 60 * 5); // Check every 5 minutes
 getPublicSpotifyToken();// Initial token fetch
 
-
  app.get('/', (req, res) => {
     res.sendFile(__dirname + '/succ.html');
 });
@@ -1194,41 +1193,24 @@ app.post('/api/clear-group-top-songs', async (req, res) => {
         }
 
         // Clear the topSongs field by setting it to an empty array
-        await groupRef.update({ topSongs: [] });
+        await groupRef.update({ topSongs: [],
+            playlistLink: admin.firestore.FieldValue.delete(),
+            recommendedPlaylistLink: admin.firestore.FieldValue.delete()
+        });
 
-        res.status(200).send('Top rated songs have been cleared from the group.');
+        res.status(200).send('Top rated songs, playlist link and recommended playlist link have been cleared from the group.');
     } catch (error) {
-        console.error('Error clearing top rated songs from the group:', error);
+        console.error('Error clearing data from group:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 app.get('/auth/spotify', passport.authenticate('spotify', {
     scope: ['playlist-modify-private', 'playlist-modify-public']
-  }));
-app.get('/auth/spotify/callback', 
-  passport.authenticate('spotify', { failureRedirect: '/auth/spotify' }),
+}));
+app.get('/auth/spotify/callback', passport.authenticate('spotify', { failureRedirect: '/auth/spotify' }),
   function(req, res) {
     // Successful authentication
     res.redirect('/');
-});
-app.post('/api/transfer-data', async (req, res) => {
-    try {
-        // Fetch data from the source collection in the source database
-        const sourceCollectionRef = admin.firestore().collection('sourceCollection');
-        const sourceDataSnapshot = await sourceCollectionRef.get();
-        const sourceData = sourceDataSnapshot.docs.map(doc => doc.data());
-
-        // Store data in the destination collection in the destination database
-        const destCollectionRef = firestore.collection('destCollection');
-        sourceData.forEach(async (data) => {
-            await destCollectionRef.add(data);
-        });
-
-        res.status(200).send('Data transfer successful');
-    } catch (error) {
-        console.error('Error transferring data:', error);
-        res.status(500).send('Internal Server Error');
-    }
 });
 app.post('/create-playlist', async (req, res) => {
     //if (!req.isAuthenticated()) {
@@ -1237,7 +1219,7 @@ app.post('/create-playlist', async (req, res) => {
   
     try {
       // Assume req.user contains the authenticated user's data
-      const userSpotifyAccessToken = "BQBb8gepwIdq9QD12OGzLHeYcUJIJjs-yKpQuE8wYrT-R6diGJqyb7RF79-i5k4WFoqIAxWcXFeij2xV4mLMNmoYUykXYPjTm-p8sgk76k_MEXSekDHbp6-zAlDjYSpr91RIbDRoBJdy3A4Qzoc223Ubu2g7i_aBSGGGvq638bSYR_YMzZUtHlV4wiU7b5GXhsFknQOl5VbZH0KapItoCw4e38NOO7pbEODItNHFikjufJM7qOI";
+      const userSpotifyAccessToken = "BQA_1qwMez7-R01FcQuNM609gnr5mSi-mhwtT-XKUEtiMT8KEAwcwPwMHDYwg_1iXSNRfekK_D1NTl5_D5YGKy_iXoLY_MfeyTzXleUdzXm7uMZU_-T3094d7QAOCSHshZv8dsmjHlpKX0pPYEDYlAsrgw489soYOxvrJRovVWIPUhmx-NwN2RJjkVjwu1dbQpND5p9T498ATCKMcsmcy5QUA9pLE4j6aigAf9yhr3PGVy97BE71DrwNGMkJpg";
       const friendGroupId = req.body.friendGroupId; // The friend group ID should be sent in the request body
   
       // Fetch the friend group name from Firestore
@@ -1300,3 +1282,196 @@ async function addSongsToPlaylist(playlistId, friendGroupId, accessToken) {
         throw new Error(`Spotify API error: ${addTracksData.error.message}`);
       }
 }
+app.post('/create-recommendation-playlist', async (req, res) => {
+    const { friendGroupId } = req.body;
+    const userSpotifyAccessToken = "BQA_1qwMez7-R01FcQuNM609gnr5mSi-mhwtT-XKUEtiMT8KEAwcwPwMHDYwg_1iXSNRfekK_D1NTl5_D5YGKy_iXoLY_MfeyTzXleUdzXm7uMZU_-T3094d7QAOCSHshZv8dsmjHlpKX0pPYEDYlAsrgw489soYOxvrJRovVWIPUhmx-NwN2RJjkVjwu1dbQpND5p9T498ATCKMcsmcy5QUA9pLE4j6aigAf9yhr3PGVy97BE71DrwNGMkJpg";
+  
+    try {
+      const friendGroupDoc = await firestore.collection('friendGroups').doc(friendGroupId).get();
+      if (!friendGroupDoc.exists) {
+        return res.status(404).send('Friend group not found');
+      }
+      const topSongs = friendGroupDoc.data().topSongs;
+  
+      // Create a new playlist
+      const playlistName = `Recommended Songs for ${friendGroupDoc.data().name}`;
+      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/anilozanayhan/playlists`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userSpotifyAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: playlistName,
+          public: false
+        })
+      });
+      const playlistData = await createPlaylistResponse.json();
+      if (!createPlaylistResponse.ok) {
+        throw new Error(`Spotify API error: ${playlistData.error.message}`);
+      }
+  
+      // Loop through topSongs in batches of five
+      for (let i = 0; i < topSongs.length; i += 5) {
+        const seedTracks = topSongs.slice(i, i + 5).map(song => song.spotifyTrackId);
+  
+        // Get recommendations based on seed tracks
+        const recommendationsResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks.join(',')}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${userSpotifyAccessToken}` }
+        });
+        const recommendationsData = await recommendationsResponse.json();
+        if (!recommendationsResponse.ok) {
+          throw new Error(`Spotify API error: ${recommendationsData.error.message}`);
+        }
+  
+        // Add the recommended tracks to the playlist
+        const trackUris = recommendationsData.tracks.map(track => track.uri);
+        const addTracksResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistData.id}/tracks`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${userSpotifyAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ uris: trackUris })
+        });
+        if (!addTracksResponse.ok) {
+          const addTracksData = await addTracksResponse.json();
+          throw new Error(`Spotify API error: ${addTracksData.error.message}`);
+        }
+      }
+  
+      // Update Firestore with the playlist link
+      await firestore.collection('friendGroups').doc(friendGroupId).update({
+        recommendedPlaylistLink: playlistData.external_urls.spotify
+      });
+  
+      res.status(201).send({ playlistId: playlistData.id, message: 'Recommendation playlist created successfully' });
+    } catch (error) {
+      console.error('Error in creating recommendation Spotify playlist', error);
+      res.status(500).send('Internal Server Error');
+    }
+  });
+// Initialize Firestore Instances
+const sourceFirebaseApp = admin.initializeApp({
+    credential: admin.credential.cert({
+        "type": "service_account",
+        "project_id": "cs308fire",
+        "private_key_id": "016c92bbadc24a0805fdf5acd5a384b998a81633",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCNAHw0dJgW31c6\nbq/w3nwhh8atK1LZenYTOLCx00huFEoCTR7YceUrErKCOEXkOFw83a9bVb/f/3ui\nU/KLg3MDyMadRT2CVQc++uPDkd47EvXDQegVQrSxWIWli08UR+5HjzJrQVkiS1RP\n6bWaZC5/PNiWbYRlm0dnh2/Nj90DQKDpx529ZxzvStIvuQi/C0D5DlGNY0nwKYWo\nOUO5SXuADLTIPRbM4JqeyLQrDTRhdXy4RJGU2YjesArJWPYfGgA1PqpNI2QRNp5v\nHbrl1tag847lOYHKJ8izHLO9LI8trNm6G8Bhgb3mGCNxGPItg8CmwO+vH5zlRNgy\nuaF6kcgbAgMBAAECggEADXSUZbUSpmwduNfDNmsk0VZRoUjXGSXUirUIN5AAA3Ew\nNtQBM4p64gdgvYh9MvAl7TECgObH7qpEtBLqvGGI4j2QpoVq/zr5/AqZHZqX6G9A\nwKdTbGP3Nk1KQ6ftnfPXS0DhANc1mE4z94RH7jnNLhsyV/iPf9q3j6ufAbDO2HZ4\nIIWXVVmyUkgluJfHsikO1KZcKYUgcY/e/o4Nj9R4o0Uc1yd3V+54pPw5pvL2eHB8\nLcMzJQiK1Vp5qsji3oYzX5O41u9LjFHRresYy+03aFmNXO+7/B9eti72JMAFpkEh\n23r9atajH03Kie/NWqZY4DBOIpizm6JSzu9xXddMIQKBgQDBHsMq7D5bnL5FWodU\nHFh8C3gkigJsg/sK/cj6UswQqXmWywh74CkGFv55KqXimbBpAAjw8HheKA3knXFP\nnOfErf+hZozl64orBuFPRaybeBSeVhoVXMcMiPZKDceuCJNNASg/W7u0qrmhsW/J\nBEZgQNrXQKX8Wk6tm+Jl1B0dswKBgQC66XvRQPK8aUn93JUptWpGnkpAVr+rSppb\nnto396PLSe+0c2jl8KeCtJ4o3FtPBXV59lBifru3xotEKlOl4LWiXPUsUpDS+k9J\nF6WCV8sg0OfgAHbm/SnucxuC1I4f2By86tsSGVZzvnvSZj9Vwqv/xbepyp+v65Fz\ne1KtT9AH+QKBgBD8J6YqyQE9s+5dm/Fl3NJsH9D24mew4+9/iqGZjqEYhr0gdkqO\n2IzUkOUPPy/C3KUff6nRPITreO1We5TI9Al0VDtZzaKbKLfIDyDtu9Sgpw+V+w1N\n76PGmALDW4CO+IWZSHTqGIQ3T8RM2swPODFXAuhTo0Wim7DhOPRDx5vJAoGBALIn\nTa8b2sGfEbl4gGxq0EtTIK7GgJZB23KsrI5f6a0gYet7fWZ9xQweIAoOTrG5IEoJ\nboETDtWR1rg4J9aZokaJl96RLB0MHHosocLk72Xt+LVXe/2bHFZ9PKGs+3J6yJmA\nuSI9KFvWGatnbcLOdKary+14hlBllhOeXiV3R2/xAoGBAL3caqq09CiP7Gcz/oba\nrVCwbjifpTD7RMtsTBNsLRolTAXiqTyP1fsjte+f53vT9FGbZsT1CDy0zzNMOYfn\nYOttxS/RZ0FLgunPaTxe6HUciY9BsIVD2/iFzSFTkvWTctEySyKKqJSjyWpIsb3+\nViyEkOE89qIT12NbnbdcAfSq\n-----END PRIVATE KEY-----\n",
+        "client_email": "firebase-adminsdk-3258q@cs308fire.iam.gserviceaccount.com",
+        "client_id": "103382099254832182837",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-3258q%40cs308fire.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+      
+      
+    }),
+    databaseURL: "https://console.firebase.google.com/project/cs308fire/firestore/data/~2F" // Use your Firebase project's database URL here
+}, 'source');
+const destFirebaseApp = admin.initializeApp({
+    credential: admin.credential.cert({
+    "type": "service_account",
+    "project_id": "supotifydb",
+    "private_key_id": "8f341f4beed5a43d17920ac4bfe4ba85c0f5f1c0",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDkDmY1vn3L1SoJ\nsqbCaIYiooG1+Q0Kl1ryHkFtkhOQdTfiWZ+IoJ47qN/ZvQtbXtiStxd5eLR5lHvN\nNxdhq5kZnb5b7J/7iIMgpnEvZlu4qFIhdGHKvA7wD5qIarDQB1oYgGXjt8T6t2J4\nmlJAM620+kElKTrDa1c+orT7YQCMQZgj24R8Twp1tPdehvrfnTSfnKdm5MxzLoh6\np2w8ZVGjdDiqwRYUylZDBIDfftxivIsT6C6q/Wn0KvJbSqnhPqZA55GjjMrsW6a2\n62MszsOctiIOOkaK1hGLPFQTIPjcf2ZgrmzaN33d+O7InQYxH8Vxb6YAcKS/6gTP\n3QSglpKLAgMBAAECggEAAMzVlHV1VyW36PRVGpkLElQ/7it+hlNkeIcqxl2Timvu\n3MsaIXHMm6SYOsNcoUkeZK5n5a29LxW4TXorDDdAyKnynYUZVTvYuGYS4oYiy8ds\nQX6vspiWcYKUrNX6/hCJj2KzxRGttsGwd8x+jjDax4dTX+kLp0nI49UtVHwzQg7M\nAtOiXEuvQGa7HsEyGCOb64UMqbHZrrDoVZIFVa4dTzeNn4uodQJMhSqm0unHhnS/\nUYqTRvWZ3/aZzOrDB7OqACq63S7AJo6XmqzhRVaesa4L8xuEfGu3yxy2BQW2jfw3\n92BwXRUEKtmuna/lWOCKDVrK/jFuchYgfhOavxQKuQKBgQD/wnGy5c+DFDVKoxaT\nQH6YUlGIJcmHMbvOgCUe9YdcP0n+MJ4CN4SUTSQQmONob1eH4opuUsghj1aFlIjR\n5JfrjsueDTj3a2TvQrYFYRaBADRLOL3GtxlA5LAxOQM6zOgU/8M55m2l/VkL3a/9\n0noomyW/kk2Gvxh9DjDYpgvfbwKBgQDkRUmbd47u07hBEqO9YTJlRctnhyx/nPyE\nYm/oLR16h50O0/VC7MCJlcVxx2R1OnbRB/uBMDcyU9xKum3bNqY1L9bFU5OOTJ1T\nqj9T+4y7d5rpSAVBMVcMXlosPsgC82rilrCxlCNqWVGG/6DQFA9vqbzN55axMc7f\nS5i7MkFwpQKBgFGLDjMqoDm7lK4iR01Vj8dC36nX2mQXUDirlKpFQA4CQ7YejBJK\n3yNlYO1FwaOHdFHnwZkhHZvNlplqXSEGkAVTdsoCjzobbIf4Lg6TANjKVuHwylj0\nAcI155MaCVSTBh/D19u7AxScLOrimH0FwVr29Fca70rZ3JXqk1pPvpNTAoGBAKOE\nRqAJWugV3a0vjv9/+ru07Wnx2JxpdjHW2db1SmKVdppClzQjqCBmmxNQA9Q91xMR\npsX6Je/1Rp55QWyAjzsWU8Dyh4attx1RnR+p2DwKB3wITUtP7s07YVjEeD405GIA\nE/6A4YWzCcWspCOp2wzgCBFvTfEMfuZRnsypyVrJAoGABLndElJnAXSa9gwbf7to\nT+pNTXdj57fpnTtGBnePMGN0icPNJgeY5JPYMCTb1GYqkBd7ynWI8Hx1usJ+bYUj\nYyCplecQoZ7rvuceGgy4U5S5bD9wKoIaPbsixgRj74BKXRmiIoYTklhG50FK2Bsi\nX8LCxhpini8/1rD15T0p0gU=\n-----END PRIVATE KEY-----\n",
+    "client_email": "firebase-adminsdk-wfm96@supotifydb.iam.gserviceaccount.com",
+    "client_id": "100992823672283419906",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-wfm96%40supotifydb.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+      
+    }),
+    databaseURL: "https://console.firebase.google.com/project/supotifydb/firestore/data/~2F"
+}, 'destination');
+app.post('/api/transfer-all-collections', async (req, res) => {
+  try {
+    const sourceDb = admin.firestore(sourceFirebaseApp);
+    const destDb = admin.firestore(destFirebaseApp);
+
+    // Fetch the list of all collections from the source database
+    const sourceCollections = await sourceDb.listCollections();
+    for (const collection of sourceCollections) {
+      const destCollectionRef = destDb.collection(collection.id);
+      const sourceDocumentsSnapshot = await collection.get();
+
+      // Perform the transfer in batches to avoid potential memory issues
+      const batch = destDb.batch();
+      sourceDocumentsSnapshot.docs.forEach(doc => {
+        const destDocRef = destCollectionRef.doc(doc.id);
+        batch.set(destDocRef, doc.data());
+      });
+      await batch.commit();
+    }
+
+    res.status(200).send('All collections transferred successfully');
+  } catch (error) {
+    console.error('Error transferring collections:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+app.post('/api/rate-artist', async (req, res) => {
+    const { artist, rating, userId } = req.body;
+    await getPublicSpotifyToken();
+    const publSpotifyAccessToken = publicAccessToken;
+
+    if (!artist || !rating || !userId) {
+        return res.status(400).send('Missing required fields');
+    }
+
+    try {
+        // Search Spotify for the artist and get their ID
+        const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artist)}&type=artist`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${publSpotifyAccessToken}` }
+        });
+        const searchData = await searchResponse.json();
+        const artistItems = searchData.artists.items;
+
+        if (artistItems.length === 0) {
+            throw new Error('Artist not found on Spotify');
+        }
+
+        const artistSpotifyId = artistItems[0].id;
+
+        // Create an entry for the artist in the 'artists' collection
+        const artistRef = await firestore.collection('artists').add({
+            artist,
+            rating,
+            userId,
+            artistSpotifyId,
+            artistSongs: [] // Placeholder for songs
+        });
+
+        // Find songs by the artist in the 'song' collection and add them
+        const songsSnapshot = await firestore.collection('song').where('artist', '==', artist).get();
+        const artistSongs = [];
+        songsSnapshot.forEach(doc => {
+            const song = doc.data();
+            if (song.userId === userId) { // Check if the song belongs to the same user
+                artistSongs.push({
+                    name: song.name,
+                    album: song.album,
+                    year: song.year,
+                    rating: song.rating,
+                    userId: song.userId,
+                    spotifyTrackId: song.spotifyTrackId
+                });
+            }
+        });
+
+        // Update the artist document with the songs
+        await artistRef.update({
+            artistSongs
+        });
+
+        res.status(201).send({ artistId: artistRef.id, message: 'Artist rated and songs added successfully' });
+    } catch (error) {
+        console.error('Error rating artist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
