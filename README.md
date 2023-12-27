@@ -30,7 +30,7 @@ A spotify developer account with Client ID and Client Secret
 5) Download passport for spotify:
   We use passport for spotify authentication.
 
-     npm install passport-spotify
+     npm install passport passport-spotify
   
 6) Install CORS:
    If cors is not installed on your device, use:
