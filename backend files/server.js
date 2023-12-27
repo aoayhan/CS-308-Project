@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const app = express();
 const port = 3000;
 app.use(express.json());
+const session = require('express-session');
 app.use(cors());
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
@@ -12,22 +13,48 @@ const admin = require('firebase-admin');
 const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
 const fs = require('fs').promises;
 const { addUserRatingsToUsersCollection } = require('./songimport'); // Adjust the path to the actual location of songimport.js
-
+const passport = require('passport');
+const SpotifyStrategy = require('passport-spotify').Strategy;
+let publicAccessToken = ''; // Token for public data access
 
 admin.initializeApp({
    credential: admin.credential.cert(serviceAccount)
 });
 const firestore = admin.firestore();
-
+app.use(session({
+    secret: 'your_secret_key', // This secret key should be a random, secure string
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false } // Set secure to true if using https
+  }));
+  
+// Passport spotify
+passport.use(new SpotifyStrategy({
+    clientID: 'c30b5791c77b448ab12f973c3b7451cf',
+    clientSecret: '3a5201442fdd4fb794514aeb3816b8c0',
+    callbackURL: 'http://localhost:3000/auth/spotify/callback'
+  },
+  function(accessToken, refreshToken, expires_in, profile, done) {
+    profile.userAccessToken = accessToken; // Add the token to the user profile
+    profile.spotifyId = profile.id;
+    return done(null, profile);
+  }
+));
+app.use(passport.initialize());
+app.use(passport.session());
+passport.serializeUser(function(user, done) {
+    done(null, user); // Serialize the whole user object
+  });
+  passport.deserializeUser(function(obj, done) {
+    done(null, obj); // Deserialize the user profile object
+  });
 //Spotify 
-
-const clientId = '839999e17bd94049b58605a96fcf0163'; // Replace with your Spotify Client ID
-const clientSecret = '3e1664060b134248aa2e8b6af323e25e'; // Replace with your Spotify Client Secret
-
+const clientId = 'c30b5791c77b448ab12f973c3b7451cf'; // Replace with your Spotify Client ID
+const clientSecret = '3a5201442fdd4fb794514aeb3816b8c0'; // Replace with your Spotify Client Secret
 let accessToken = '';
-let tokenExpirationEpoch;
+let publicTokenExpirationEpoch;
 
-const getSpotifyToken = async () => {
+const getPublicSpotifyToken = async () => {
     const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
@@ -38,36 +65,22 @@ const getSpotifyToken = async () => {
     });
 
     const data = await response.json();
-    accessToken = data.access_token;
+    publicAccessToken = data.access_token;
     const expiresIn = data.expires_in || 3600; // Default to 1 hour if not specified
-    tokenExpirationEpoch = (new Date().getTime() / 1000) + expiresIn - 300; // Subtract 5 minutes to refresh token early
+    publicTokenExpirationEpoch = (new Date().getTime() / 1000) + expiresIn - 300; // Subtract 5 minutes to refresh token early
 };
 // Refresh the token periodically
 setInterval(() => {
-    if (new Date().getTime() / 1000 > tokenExpirationEpoch) {
-        getSpotifyToken();
+    if (new Date().getTime() / 1000 > publicTokenExpirationEpoch) {
+        getPublicSpotifyToken();
     }
 }, 1000 * 60 * 5); // Check every 5 minutes
-getSpotifyToken();// Initial token fetch
+getPublicSpotifyToken();// Initial token fetch
 
 
-    app.get('/', (req, res) => {
-        res.send('Hello World!');
-    });
- const authenticate = async (req, res, next) => {
-    const token = req.headers.authorization;
-    if (!token) {
-        return res.status(401).send('Unauthorized');
-    }
-
-    try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        req.user = decodedToken;
-        next();
-    } catch (error) {
-        res.status(403).send('Invalid token');
-    }
-};
+ app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/succ.html');
+});
  app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
@@ -112,7 +125,7 @@ app.post('/api/add-song', async (req, res) => {
         const query = `${songName} artist:${artist}`;
         const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&market=TR&limit=1`, {
             headers: {
-                'Authorization': `Bearer ${accessToken}`
+                'Authorization': `Bearer ${publicAccessToken}`
             }
         });
 
@@ -289,7 +302,7 @@ app.get('/spotify-search', async (req, res) => {
     const query = req.query.q;
     const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&market=TR&limit=6`, {
       headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${publicAccessToken}`
       }
     });
     const data = await response.json();
@@ -542,7 +555,7 @@ app.get('/api/recommend-songs', async (req, res) => {
 
             const spotifyResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrack.spotifyTrackId}&limit=${numRecommendationsPerTrack}`, {
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`
+                    'Authorization': `Bearer ${publicAccessToken}`
                 }
             });
 
@@ -622,7 +635,7 @@ app.get('/api/recommend-friends-songs', async (req, res) => {
 
                 const spotifyResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrack.spotifyTrackId}&limit=2`, {
                     headers: {
-                        'Authorization': `Bearer ${accessToken}`
+                        'Authorization': `Bearer ${publicAccessToken}`
                     }
                 });
 
@@ -1189,3 +1202,101 @@ app.post('/api/clear-group-top-songs', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+app.get('/auth/spotify', passport.authenticate('spotify', {
+    scope: ['playlist-modify-private', 'playlist-modify-public']
+  }));
+app.get('/auth/spotify/callback', 
+  passport.authenticate('spotify', { failureRedirect: '/auth/spotify' }),
+  function(req, res) {
+    // Successful authentication
+    res.redirect('/');
+});
+app.post('/api/transfer-data', async (req, res) => {
+    try {
+        // Fetch data from the source collection in the source database
+        const sourceCollectionRef = admin.firestore().collection('sourceCollection');
+        const sourceDataSnapshot = await sourceCollectionRef.get();
+        const sourceData = sourceDataSnapshot.docs.map(doc => doc.data());
+
+        // Store data in the destination collection in the destination database
+        const destCollectionRef = firestore.collection('destCollection');
+        sourceData.forEach(async (data) => {
+            await destCollectionRef.add(data);
+        });
+
+        res.status(200).send('Data transfer successful');
+    } catch (error) {
+        console.error('Error transferring data:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.post('/create-playlist', async (req, res) => {
+    //if (!req.isAuthenticated()) {
+      //return res.status(401).send('User not authenticated with Spotify');
+    //}
+  
+    try {
+      // Assume req.user contains the authenticated user's data
+      const userSpotifyAccessToken = "BQBb8gepwIdq9QD12OGzLHeYcUJIJjs-yKpQuE8wYrT-R6diGJqyb7RF79-i5k4WFoqIAxWcXFeij2xV4mLMNmoYUykXYPjTm-p8sgk76k_MEXSekDHbp6-zAlDjYSpr91RIbDRoBJdy3A4Qzoc223Ubu2g7i_aBSGGGvq638bSYR_YMzZUtHlV4wiU7b5GXhsFknQOl5VbZH0KapItoCw4e38NOO7pbEODItNHFikjufJM7qOI";
+      const friendGroupId = req.body.friendGroupId; // The friend group ID should be sent in the request body
+  
+      // Fetch the friend group name from Firestore
+      const friendGroupDoc = await firestore.collection('friendGroups').doc(friendGroupId).get();
+      if (!friendGroupDoc.exists) {
+        return res.status(404).send('Friend group not found');
+      }
+  
+      const friendGroupName = friendGroupDoc.data().name;
+  
+      // Use the Spotify API to create a new playlist with the name of the friend group
+      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/${"anilozanayhan"}/playlists`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userSpotifyAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: friendGroupName,
+          public: false // Set to true if you want the playlist to be public
+        })
+      });
+  
+      const playlistData = await createPlaylistResponse.json();
+  
+      // Handle success or failure
+      if (!createPlaylistResponse.ok) {
+        throw new Error(`Spotify API error: ${playlistData.error.message}`);
+      }
+  
+      await addSongsToPlaylist(playlistData.id, friendGroupId, userSpotifyAccessToken);
+      const playlistLink = playlistData.external_urls.spotify;
+      await firestore.collection('friendGroups').doc(friendGroupId).update({
+        playlistLink: playlistLink
+      });
+    res.status(201).send({ playlistId: playlistData.id, message: 'Playlist created and songs added successfully' });
+  } catch (error) {
+    console.error('Error in creating Spotify playlist or adding songs', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+async function addSongsToPlaylist(playlistId, friendGroupId, accessToken) {
+    const friendGroupDoc = await firestore.collection('friendGroups').doc(friendGroupId).get();
+    if (!friendGroupDoc.exists) {
+      throw new Error('Friend group not found');
+    }
+    const topSongs = friendGroupDoc.data().topSongs;
+    const trackUris = topSongs.map(song => `spotify:track:${song.spotifyTrackId}`);
+  
+    const addTracksResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ uris: trackUris })
+    });
+    if (!addTracksResponse.ok) {
+        const addTracksData = await addTracksResponse.json();
+        throw new Error(`Spotify API error: ${addTracksData.error.message}`);
+      }
+}
