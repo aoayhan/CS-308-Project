@@ -116,16 +116,16 @@ app.post('/api/add-song', async (req, res) => {
     if (!songName || !album || !artist || !year || !userId) {
         return res.status(400).send('Missing required song details or user ID');
     }
-    
 
     try {
-        
+        // Refresh the Spotify public access token
+        await getPublicSpotifyToken();
+        const publSpotifyAccessToken = publicAccessToken;
+
         // Search for the song on Spotify to get the track ID
         const query = `${songName} artist:${artist}`;
         const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&market=TR&limit=1`, {
-            headers: {
-                'Authorization': `Bearer ${publicAccessToken}`
-            }
+            headers: { 'Authorization': `Bearer ${publSpotifyAccessToken}` }
         });
 
         const searchData = await searchResponse.json();
@@ -136,19 +136,22 @@ app.post('/api/add-song', async (req, res) => {
             return res.status(404).send('Spotify track not found');
         }
 
-        const spotifyTrackId = searchData.tracks.items[0].id; // Get the track ID of the first result
+        const spotifyTrackId = searchData.tracks.items[0].id;
+        const artistSpotifyId = searchData.tracks.items[0].artists[0].id;
 
-        // Add the song details along with the Spotify track ID to Firestore
-        const songCollectionRef = admin.firestore().collection('song');
+        // Prepare the song document
         const songDocument = {
             name: songName,
             album: album,
             artist: artist,
             year: year,
             rating: rating || null,
-            userId: userId, // Storing user's ID with the song
-            spotifyTrackId: spotifyTrackId // Storing the Spotify track ID
+            userId: userId,
+            spotifyTrackId: spotifyTrackId
         };
+
+        // Check if the song already exists in the 'song' collection
+        const songCollectionRef = admin.firestore().collection('song');
         const existingSongQuery = await songCollectionRef
             .where('name', '==', songName)
             .where('album', '==', album)
@@ -159,9 +162,30 @@ app.post('/api/add-song', async (req, res) => {
             console.log('Song already exists in the database:', songName);
             return res.status(409).send('Song already exists');
         }
+
+        // Add the song to the 'song' collection
         await songCollectionRef.add(songDocument);
 
+        // Also update/add to the artist's document in 'artists' collection
+        const artistRef = firestore.collection('artists').doc(artistSpotifyId);
+        const artistDoc = await artistRef.get();
+
+        if (artistDoc.exists) {
+            // Artist exists, append the song to the artist's songs
+            await artistRef.update({
+                artistSongs: admin.firestore.FieldValue.arrayUnion(songDocument)
+            });
+        } else {
+            // Artist does not exist, create a new artist document
+            await artistRef.set({
+                artistName: artist,
+                artistSongs: [songDocument]
+            });
+        }
+
+        // Additional user ratings update (if this function exists)
         await addUserRatingsToUsersCollection(userId);
+
         res.status(201).send('Song added successfully with Spotify track ID');
     } catch (error) {
         console.error('Error adding song to Firestore:', error);
@@ -950,7 +974,11 @@ app.get('/api/get-top-artist', async (req, res) => {
     }
 
     try {
-        const songsRef = admin.firestore().collection('songs');
+        // First, ensure you have a valid Spotify access token
+        await getPublicSpotifyToken();
+        const publSpotifyAccessToken = publicAccessToken;
+
+        const songsRef = admin.firestore().collection('song');
         // Fetch only the songs with ratings
         const querySnapshot = await songsRef
             .where('userId', '==', userEmail)
@@ -987,15 +1015,28 @@ app.get('/api/get-top-artist', async (req, res) => {
         }
 
         if (topArtist) {
-            res.status(200).json({ topArtist, averageRating: highestAverage });
+            // Fetch the artist's image from Spotify
+            const artistResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(topArtist)}&type=artist&limit=1`, {
+                headers: { 'Authorization': `Bearer ${publSpotifyAccessToken}` }
+            });
+            const artistData = await artistResponse.json();
+            const artistImageUrl = artistData.artists.items[0].images[0].url;
+
+            // Construct the Twitter share URL
+            const tweetText = `My SUpotify top artist is #${topArtist}! `;
+            const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(artistImageUrl)}`;
+
+            // You can either send the URL back to the client or directly redirect
+            res.redirect(twitterShareUrl);
         } else {
             res.status(404).send('No top artist found');
         }
     } catch (error) {
-        console.error('Error fetching top artist:', error);
+        console.error('Error fetching top artist and creating share link:', error);
         res.status(500).send('Internal Server Error');
     }
 });
+
 app.post('/api/create-friend-group', async (req, res) => {
     const { userEmail, groupName } = req.body;
     console.log("Request received to create friend group"); // Log when a request is received
@@ -1219,7 +1260,7 @@ app.post('/create-playlist', async (req, res) => {
   
     try {
       // Assume req.user contains the authenticated user's data
-      const userSpotifyAccessToken = "BQA_1qwMez7-R01FcQuNM609gnr5mSi-mhwtT-XKUEtiMT8KEAwcwPwMHDYwg_1iXSNRfekK_D1NTl5_D5YGKy_iXoLY_MfeyTzXleUdzXm7uMZU_-T3094d7QAOCSHshZv8dsmjHlpKX0pPYEDYlAsrgw489soYOxvrJRovVWIPUhmx-NwN2RJjkVjwu1dbQpND5p9T498ATCKMcsmcy5QUA9pLE4j6aigAf9yhr3PGVy97BE71DrwNGMkJpg";
+      const userSpotifyAccessToken = "BQCro7eVip71TvD0uJW_kn_07OHcQnbUIT0M5aGpcmNpj8ZMT1jq4hCT9O0ZOiPBUBQvZeWIwJMUWj1zw-S_LSvplw9PAahZ6Eas7cndOlPNfSYURYRErBft6dqk3tuhS2Wk6eKWFQzCrgsaY5B9vnAORscCDQwu-epuZLg4GjCHFWL4EB6EZzHuu6DbT_dSlZVvvFWy4CMHdf4kwQqW_QJKNX2riCt-i5iP1LPb6SChdodLktQ4ANQCwxYTbw";
       const friendGroupId = req.body.friendGroupId; // The friend group ID should be sent in the request body
   
       // Fetch the friend group name from Firestore
@@ -1284,7 +1325,7 @@ async function addSongsToPlaylist(playlistId, friendGroupId, accessToken) {
 }
 app.post('/create-recommendation-playlist', async (req, res) => {
     const { friendGroupId } = req.body;
-    const userSpotifyAccessToken = "BQA_1qwMez7-R01FcQuNM609gnr5mSi-mhwtT-XKUEtiMT8KEAwcwPwMHDYwg_1iXSNRfekK_D1NTl5_D5YGKy_iXoLY_MfeyTzXleUdzXm7uMZU_-T3094d7QAOCSHshZv8dsmjHlpKX0pPYEDYlAsrgw489soYOxvrJRovVWIPUhmx-NwN2RJjkVjwu1dbQpND5p9T498ATCKMcsmcy5QUA9pLE4j6aigAf9yhr3PGVy97BE71DrwNGMkJpg";
+    const userSpotifyAccessToken = "BQCro7eVip71TvD0uJW_kn_07OHcQnbUIT0M5aGpcmNpj8ZMT1jq4hCT9O0ZOiPBUBQvZeWIwJMUWj1zw-S_LSvplw9PAahZ6Eas7cndOlPNfSYURYRErBft6dqk3tuhS2Wk6eKWFQzCrgsaY5B9vnAORscCDQwu-epuZLg4GjCHFWL4EB6EZzHuu6DbT_dSlZVvvFWy4CMHdf4kwQqW_QJKNX2riCt-i5iP1LPb6SChdodLktQ4ANQCwxYTbw";
   
     try {
       const friendGroupDoc = await firestore.collection('friendGroups').doc(friendGroupId).get();
@@ -1351,8 +1392,7 @@ app.post('/create-recommendation-playlist', async (req, res) => {
       console.error('Error in creating recommendation Spotify playlist', error);
       res.status(500).send('Internal Server Error');
     }
-  });
-// Initialize Firestore Instances
+});
 const sourceFirebaseApp = admin.initializeApp({
       
     }),
@@ -1414,14 +1454,19 @@ app.post('/api/rate-artist', async (req, res) => {
         const artistSpotifyId = artistItems[0].id;
 
         // Create an entry for the artist in the 'artists' collection
-        const artistRef = await firestore.collection('artists').add({
-            artist,
-            rating,
-            userId,
-            artistSpotifyId,
-            artistSongs: [] // Placeholder for songs
-        });
+        const artistRef = firestore.collection('artists').doc(artist); // Use artist name as the document ID
 
+        const artistDoc = await artistRef.get();
+        if (!artistDoc.exists) {
+            // Create a new artist document
+            await artistRef.set({
+                artist,
+                rating,
+                userId,
+                artistSpotifyId,
+                artistSongs: [] // Initialize with an empty array
+            });
+        }
         // Find songs by the artist in the 'song' collection and add them
         const songsSnapshot = await firestore.collection('song').where('artist', '==', artist).get();
         const artistSongs = [];
@@ -1432,7 +1477,7 @@ app.post('/api/rate-artist', async (req, res) => {
                     name: song.name,
                     album: song.album,
                     year: song.year,
-                    rating: song.rating,
+                    rating: typeof song.rating !== 'undefined' ? song.rating : null, // Use null if rating is undefined
                     userId: song.userId,
                     spotifyTrackId: song.spotifyTrackId
                 });
@@ -1440,9 +1485,14 @@ app.post('/api/rate-artist', async (req, res) => {
         });
 
         // Update the artist document with the songs
-        await artistRef.update({
-            artistSongs
-        });
+        
+        if (artistSongs.length > 0) {
+            // Update the artist document with the songs
+            await artistRef.update({ artistSongs }).catch(e => console.error(e));
+        } 
+        else {
+            console.log('No songs to update for this artist and user.'); 
+        }
 
         res.status(201).send({ artistId: artistRef.id, message: 'Artist rated and songs added successfully' });
     } catch (error) {
@@ -1450,3 +1500,100 @@ app.post('/api/rate-artist', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+app.get('/api/top-rated-artists', async (req, res) => {
+    const { userId } = req.query;
+
+    if (!userId) {
+        return res.status(400).send('Missing required user ID');
+    }
+
+    try {
+        const artistsRef = firestore.collection('artists');
+        const querySnapshot = await artistsRef
+            .where('userId', '==', userId)
+            .orderBy('rating', 'desc')
+            .limit(5)
+            .get();
+
+        if (querySnapshot.empty) {
+            return res.status(404).send('No top rated artists found for this user');
+        }
+
+        const topArtists = querySnapshot.docs.map(doc => doc.data());
+
+        res.status(200).json(topArtists);
+    } catch (error) {
+        console.error('Error fetching top rated artists:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/user-friend-groups', async (req, res) => {
+    const { userEmail } = req.body;
+
+    if (!userEmail) {
+        return res.status(400).send('Missing required user email');
+    }
+
+    try {
+        // Query all friend groups where the user is a member
+        const friendGroupsRef = firestore.collection('friendGroups');
+        const querySnapshot = await friendGroupsRef.where('members', 'array-contains', userEmail).get();
+
+        if (querySnapshot.empty) {
+            return res.status(404).send('No friend groups found for this user');
+        }
+
+        // Construct the response data
+        const friendGroupsData = querySnapshot.docs.map(doc => {
+            const groupData = doc.data();
+            // Exclude 'createdAt' and 'createdBy' from the details
+            const { createdAt, createdBy, ...rest } = groupData;
+            return rest;
+        });
+
+        res.status(200).json(friendGroupsData);
+    } catch (error) {
+        console.error('Error retrieving friend groups:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/average-rating-by-year', async (req, res) => {
+    const userEmail = req.body.userEmail; // Expecting to receive the userEmail in the request body
+
+    if (!userEmail) {
+        return res.status(400).send('Missing required field: userEmail');
+    }
+
+    try {
+        // Fetch only the songs that belong to the user
+        const songsSnapshot = await firestore.collection('song')
+            .where('userId', '==', userEmail)
+            .get();
+
+        let yearRatings = {};
+        // Initialize a map to hold total ratings and count of songs per year
+        let ratingsMap = {};
+
+        songsSnapshot.forEach(doc => {
+            const { year, rating } = doc.data();
+            if (rating !== null && rating !== undefined) { // Ensure that the rating is not null or undefined
+                if (!ratingsMap[year]) {
+                    ratingsMap[year] = { totalRating: 0, count: 0 };
+                }
+                ratingsMap[year].totalRating += rating;
+                ratingsMap[year].count++;
+            }
+        });
+
+        // Calculate the average rating for each year
+        for (const [year, data] of Object.entries(ratingsMap)) {
+            yearRatings[year] = (data.totalRating / data.count).toFixed(2);
+        }
+
+        res.status(200).json(yearRatings);
+    } catch (error) {
+        console.error('Error fetching average rating by year:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
