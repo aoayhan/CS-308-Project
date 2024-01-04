@@ -1644,7 +1644,6 @@ app.get('/api/get-top-artist', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
-
 app.get('/api/get-least-liked-artist', async (req, res) => {
     const userEmail = req.query.userEmail;
 
@@ -1732,6 +1731,40 @@ app.get('/api/artist-popularity', async (req, res) => {
         res.status(200).json(sortedArtists);
     } catch (error) {
         console.error('Error fetching artist popularity:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/favorite-song-per-year', async (req, res) => {
+    const { userEmail } = req.body;
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('song');
+        const querySnapshot = await songsRef
+            .where('userId', '==', userEmail)
+            .orderBy('year')
+            .orderBy('rating', 'desc')
+            .get();
+
+        let favoriteSongsByYear = {};
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            const { year, rating } = song;
+
+            if (year >= 2010 && year <= 2023) {
+                if (!favoriteSongsByYear[year] || rating > favoriteSongsByYear[year].rating) {
+                    favoriteSongsByYear[year] = song;
+                }
+            }
+        });
+
+        res.status(200).json(favoriteSongsByYear);
+    } catch (error) {
+        console.error('Error fetching favorite songs per year:', error);
         res.status(500).send('Internal Server Error');
     }
 });
