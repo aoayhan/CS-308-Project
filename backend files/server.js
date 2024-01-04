@@ -966,77 +966,6 @@ app.get('/api/top-songs-from-era', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
-app.get('/api/get-top-artist', async (req, res) => {
-    const userEmail = req.query.userEmail;
-
-    if (!userEmail) {
-        return res.status(400).send('User email is required');
-    }
-
-    try {
-        // First, ensure you have a valid Spotify access token
-        await getPublicSpotifyToken();
-        const publSpotifyAccessToken = publicAccessToken;
-
-        const songsRef = admin.firestore().collection('song');
-        // Fetch only the songs with ratings
-        const querySnapshot = await songsRef
-            .where('userId', '==', userEmail)
-            .where('rating', '!=', null)
-            .get();
-
-        let artistRatings = {};
-
-        querySnapshot.forEach(doc => {
-            const song = doc.data();
-            const { artist, rating } = song;
-            if (rating !== null) {
-                if (!artistRatings[artist]) {
-                    artistRatings[artist] = {
-                        totalRating: rating,
-                        count: 1
-                    };
-                } else {
-                    artistRatings[artist].totalRating += rating;
-                    artistRatings[artist].count += 1;
-                }
-            }
-        });
-
-        let topArtist = null;
-        let highestAverage = 0;
-
-        for (const artist in artistRatings) {
-            const averageRating = artistRatings[artist].totalRating / artistRatings[artist].count;
-            if (averageRating > highestAverage) {
-                highestAverage = averageRating;
-                topArtist = artist;
-            }
-        }
-
-        if (topArtist) {
-            // Fetch the artist's image from Spotify
-            const artistResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(topArtist)}&type=artist&limit=1`, {
-                headers: { 'Authorization': `Bearer ${publSpotifyAccessToken}` }
-            });
-            const artistData = await artistResponse.json();
-            const artistImageUrl = artistData.artists.items[0].images[0].url;
-
-            // Construct the Twitter share URL
-            const tweetText = `My SUpotify top artist is #${topArtist}! `;
-            const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(artistImageUrl)}`;
-
-            // You can either send the URL back to the client or directly redirect
-            res.redirect(twitterShareUrl);
-        } else {
-            res.status(404).send('No top artist found');
-        }
-    } catch (error) {
-        console.error('Error fetching top artist and creating share link:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
 app.post('/api/create-friend-group', async (req, res) => {
     const { userEmail, groupName } = req.body;
     console.log("Request received to create friend group"); // Log when a request is received
@@ -1437,7 +1366,7 @@ app.post('/api/rate-artist', async (req, res) => {
     if (!artist || !rating || !userId) {
         return res.status(400).send('Missing required fields');
     }
-
+    const intRating = parseInt(rating, 10);
     try {
         // Search Spotify for the artist and get their ID
         const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artist)}&type=artist`, {
@@ -1461,7 +1390,7 @@ app.post('/api/rate-artist', async (req, res) => {
             // Create a new artist document
             await artistRef.set({
                 artist,
-                rating,
+                rating: intRating,
                 userId,
                 artistSpotifyId,
                 artistSongs: [] // Initialize with an empty array
@@ -1596,4 +1525,213 @@ app.get('/api/average-rating-by-year', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+app.get('/api/compare-artist-song-ratings', async (req, res) => {
+    const { userId } = req.body;
 
+    if (!userId) {
+        return res.status(400).send('Missing required user ID');
+    }
+
+    try {
+        const artistsRef = firestore.collection('artists');
+        const artistsSnapshot = await artistsRef
+            .where('userId', '==', userId)
+            .orderBy('rating', 'desc')
+            .limit(5)
+            .get();
+
+        if (artistsSnapshot.empty) {
+            return res.status(404).send('No top-rated artists found for this user');
+        }
+
+        let artistComparisonData = [];
+
+        for (const artistDoc of artistsSnapshot.docs) {
+            const artistData = artistDoc.data();
+
+            // Calculate average song rating for the artist
+            const songsRef = firestore.collection('song');
+            const songsSnapshot = await songsRef
+                .where('userId', '==', userId)
+                .where('artist', '==', artistData.artist)
+                .get();
+
+            let totalSongRating = 0;
+            let songCount = 0;
+
+            songsSnapshot.forEach(songDoc => {
+                const songData = songDoc.data();
+                if (songData.rating) {
+                    totalSongRating += songData.rating;
+                    songCount++;
+                }
+            });
+
+            const averageSongRating = songCount > 0 ? parseFloat((totalSongRating / songCount).toFixed(2)) : 0;
+
+            // Add the comparison data
+            artistComparisonData.push({
+                artist: artistData.artist,
+                artistRating: artistData.rating,
+                averageSongRating: averageSongRating
+            });
+        }
+
+        res.status(200).json(artistComparisonData);
+    } catch (error) {
+        console.error('Error comparing artist and song ratings:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/get-top-artist', async (req, res) => {
+    const userEmail = req.query.userEmail;
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('song');
+        // Fetch only the songs with ratings
+        const querySnapshot = await songsRef
+            .where('userId', '==', userEmail)
+            .where('rating', '!=', null)
+            .get();
+
+        let artistRatings = {};
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            const { artist, rating } = song;
+            if (rating !== null) {
+                if (!artistRatings[artist]) {
+                    artistRatings[artist] = {
+                        totalRating: rating,
+                        count: 1
+                    };
+                } else {
+                    artistRatings[artist].totalRating += rating;
+                    artistRatings[artist].count += 1;
+                }
+            }
+        });
+
+        let topArtist = null;
+        let highestAverage = 0;
+        let songAverageRating = 0;
+
+        for (const artist in artistRatings) {
+            const averageRating = artistRatings[artist].totalRating / artistRatings[artist].count;
+            if (averageRating > highestAverage) {
+                highestAverage = averageRating;
+                topArtist = artist;
+                songAverageRating = averageRating.toFixed(2); // Get average rating to 2 decimal places
+            }
+        }
+
+        if (topArtist) {
+            // Construct the Twitter share URL with the text message
+            const tweetText = `My favorite SUpotify artist is #${topArtist} . I rated them ${songAverageRating}. What is yours?`;
+            const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+
+            // Redirect to the Twitter share URL
+            res.redirect(twitterShareUrl);
+        } else {
+            res.status(404).send('No top artist found');
+        }
+    } catch (error) {
+        console.error('Error fetching top artist and creating share link:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/api/get-least-liked-artist', async (req, res) => {
+    const userEmail = req.query.userEmail;
+
+    if (!userEmail) {
+        return res.status(400).send('User email is required');
+    }
+
+    try {
+        const songsRef = admin.firestore().collection('song');
+        // Fetch only the songs with ratings
+        const querySnapshot = await songsRef
+            .where('userId', '==', userEmail)
+            .where('rating', '!=', null)
+            .get();
+
+        let artistRatings = {};
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            const { artist, rating } = song;
+            if (rating !== null) {
+                if (!artistRatings[artist]) {
+                    artistRatings[artist] = {
+                        totalRating: rating,
+                        count: 1
+                    };
+                } else {
+                    artistRatings[artist].totalRating += rating;
+                    artistRatings[artist].count += 1;
+                }
+            }
+        });
+
+        let leastLikedArtist = null;
+        let lowestAverage = Number.MAX_VALUE;
+
+        for (const artist in artistRatings) {
+            const averageRating = artistRatings[artist].totalRating / artistRatings[artist].count;
+            if (averageRating < lowestAverage) {
+                lowestAverage = averageRating;
+                leastLikedArtist = artist;
+            }
+        }
+
+        if (leastLikedArtist) {
+            // Construct the Twitter share URL with the text message
+            const tweetText = `My least liked SUpotify artist is #${leastLikedArtist}. What is yours?`;
+            const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+
+            // Redirect to the Twitter share URL
+            res.redirect(twitterShareUrl);
+        } else {
+            res.status(404).send('No least liked artist found');
+        }
+    } catch (error) {
+        console.error('Error fetching least liked artist and creating share link:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+app.get('/api/artist-popularity', async (req, res) => {
+    try {
+        const songsRef = admin.firestore().collection('song');
+        const querySnapshot = await songsRef.get();
+
+        let artistCounts = {};
+
+        querySnapshot.forEach(doc => {
+            const song = doc.data();
+            const { artist } = song;
+            if (artist) {
+                artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            }
+        });
+
+        // Convert the artistCounts object into an array and sort it
+        let sortedArtists = Object.keys(artistCounts).map(artist => {
+            return { artist: artist, count: artistCounts[artist] };
+        });
+
+        sortedArtists.sort((a, b) => b.count - a.count);
+
+        // Limit to top 10 artists
+        sortedArtists = sortedArtists.slice(0, 10);
+
+        res.status(200).json(sortedArtists);
+    } catch (error) {
+        console.error('Error fetching artist popularity:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
