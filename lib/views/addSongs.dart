@@ -158,6 +158,7 @@ class _UserSongsPageState extends State<UserSongs> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
         title: Text('Your Songs and Friends\' Top Songs'),
         actions: <Widget>[

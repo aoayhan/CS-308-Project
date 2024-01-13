@@ -34,6 +34,8 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _artistController = TextEditingController();
   final TextEditingController _albumController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
+ final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); // Form key
+ final TextEditingController _artistRatingController = TextEditingController();
   List<SimplifiedTrack> _searchResults = [];
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -259,7 +261,7 @@ Future<void> deleteSongsByAlbum(String albumName) async {
     }
   }
   
-  Future<void> deleteSongsByArtist(String artistName) async {
+Future<void> deleteSongsByArtist(String artistName) async {
     final User? user = _auth.currentUser;
     final String? userEmail = user?.email;
 
@@ -286,173 +288,314 @@ Future<void> deleteSongsByAlbum(String albumName) async {
     }
   }
 
+Future<void> submitArtistRating(int rating) async {
+  final artistName = _artistController.text;
+  final User? user = _auth.currentUser;
+  final String? userId = user?.email;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Flutter Spotify Search'),
+  if (artistName.isEmpty || userId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Please enter the artist name')),
+    );
+    return;
+  }
+
+  final url = 'http://localhost:3000/api/rate-artist';
+  try {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'artist': artistName,
+        'rating': rating,
+        'userId': userId,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Artist rated successfully')),
+      );
+    } else {
+      throw Exception('Failed to rate artist: ${response.body}');
+    }
+  } catch (error) {
+    print('Error rating artist: $error');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error rating artist')),
+    );
+  }
+}
+
+
+ void rateArtist() {
+  final TextEditingController _ratingController = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Rate Artist'),
+        content: TextField(
+          controller: _ratingController,
+          decoration: InputDecoration(hintText: "Enter a rating (1-10)"),
+          keyboardType: TextInputType.number,
+        ),
         actions: <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => UserSongs()));
-              },
-              style: ElevatedButton.styleFrom(
-                primary: Colors.green, // Button color
-                onPrimary: Colors.white, // Text color
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: Text(
-                'Your Songs',
-                style: TextStyle(fontSize: 14), // Adjust font size as needed
-              ),
-            ),
-          ),
-          ElevatedButton(
+          TextButton(
+            child: Text('Cancel'),
             onPressed: () {
-              _pickAndUploadFile(); // You can replace this with your desired action
+              Navigator.of(context).pop();
             },
-            
-            child: Text('Upload JSON'),
           ),
-          
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _songNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Song Name',
-                  ),
-                ),
-                TextField(
-                  controller: _artistController,
-                  decoration: InputDecoration(
-                    labelText: 'Artist',
-                  ),
-                ),
-                TextField(
-                  controller: _albumController,
-                  decoration: InputDecoration(
-                    labelText: 'Album',
-                  ),
-                ),
-                TextField(
-                  controller: _yearController,
-                  decoration: InputDecoration(
-                    labelText: 'Year',
-                  ),
-                ),
-                Row(
-            children: [
-              ElevatedButton(
-                onPressed: addSongByInput,
-                child: Text('Add Song'),
-              ),
-              SizedBox(width: 8), // Spacing between the buttons
-              ElevatedButton(
-                onPressed: () {
-                  final songName = _songNameController.text;
-                  final artist = _artistController.text;
-                  if (songName.isNotEmpty && artist.isNotEmpty) {
-                    deleteSong(songName, artist);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter song name and artist')),
-                    );
-                  }
-                },
-                child: Text('Remove Song'),
-                style: ElevatedButton.styleFrom(
-                  primary: Colors.red, // Button color for delete
-                ),
-              ),
-              SizedBox(width: 8),
-               ElevatedButton(
-            onPressed: () {
-              final albumName = _albumController.text;
-              if (albumName.isNotEmpty) {
-                deleteSongsByAlbum(albumName);
+          TextButton(
+            child: Text('Submit'),
+            onPressed: () async {
+              final rating = int.tryParse(_ratingController.text);
+              if (rating != null && rating >= 1 && rating <= 10) {
+                // Call the function to send the rating to the server
+                await submitArtistRating(rating);
+                Navigator.of(context).pop();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter an album name')),
+                  SnackBar(content: Text('Please enter a valid rating')),
                 );
               }
             },
-            child: Text('Remove Album'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+ @override
+  Widget build(BuildContext context) {
+    double halfScreenWidth = MediaQuery.of(context).size.width / 1.2;
+    return Scaffold(
+      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
+      appBar: AppBar(
+        title: Text('Flutter Spotify Search'),
+        actions: <Widget>[
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => UserSongs()));
+            },
             style: ElevatedButton.styleFrom(
-              primary: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: Text(
+              'Your Songs',
+              style: TextStyle(fontSize: 14),
             ),
           ),
-          SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final artistName = _artistController.text;
-                  if (artistName.isNotEmpty && _albumController.text.isEmpty && _songNameController.text.isEmpty && _yearController.text.isEmpty) {
-                    deleteSongsByArtist(artistName);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter only the artist name')),
-                    );
-                  }
-                },
-                child: Text('Remove Artist'),
-                style: ElevatedButton.styleFrom(
-                  primary: Colors.red,
-                ),
+          ElevatedButton(
+            onPressed: _pickAndUploadFile,
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
-          
-            ],
+            ),
+            child: Text('Upload JSON'),
           ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 
-                 /*firebaseUIButton(context, "My Songs", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => UserSongs()));
-                 
-                }),*/
+                Row(
+              children: [
+                SizedBox(
+                  width: halfScreenWidth,
+                  child: TextFormField(
+                    controller: _songNameController,
+                    decoration: InputDecoration(
+                      icon: Icon(Icons.music_note),
+                      labelText: 'Song Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the song name';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: halfScreenWidth,
+                  child: TextFormField(
+                    controller: _artistController,
+                    decoration: InputDecoration(
+                      icon: Icon(Icons.person),
+                      labelText: 'Artist',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the artist name';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: halfScreenWidth,
+                  child: TextFormField(
+                    controller: _albumController,
+                    decoration: InputDecoration(
+                      icon: Icon(Icons.album),
+                      labelText: 'Album',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the album name';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: halfScreenWidth,
+                  child: TextFormField(
+                    controller: _yearController,
+                    decoration: InputDecoration(
+                      icon: Icon(Icons.calendar_today),
+                      labelText: 'Year',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the year';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+                SizedBox(height: 16),
+                Row(
+  children: [
+    ElevatedButton(
+      onPressed: addSongByInput,
+      child: Text('Add Song'),
+      style: ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+    ),
+    SizedBox(width: 8),
+    ElevatedButton(
+      onPressed: () {
+        final albumName = _albumController.text;
+        if (albumName.isNotEmpty) {
+          deleteSongsByAlbum(albumName);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please enter an album name')),
+          );
+        }
+      },
+      child: Text('Remove Album'),
+      style: ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+    ),
+    SizedBox(width: 8),
+    ElevatedButton(
+      onPressed: () {
+        final artistName = _artistController.text;
+        if (artistName.isNotEmpty) {
+          deleteSongsByArtist(artistName);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please enter an artist name')),
+          );
+        }
+      },
+      child: Text('Remove Artist'),
+      style: ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+    ),
+    SizedBox(width: 8),
+    ElevatedButton(
+      onPressed: rateArtist,
+      child: Text('Rate Artist'),
+      style: ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+    ),
+  ],
+),
+
+                SizedBox(height: 16),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: 'Search for a song',
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.search),
+                      onPressed: () => searchSong(_searchController.text),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: _searchResults.length,
+                  itemBuilder: (context, index) {
+                    final track = _searchResults[index];
+                    return ListTile(
+                      title: Text(track.songName),
+                      subtitle: Text('${track.artistName} - ${track.albumName}'),
+                      trailing: IconButton(
+                        icon: Icon(Icons.add),
+                        onPressed: () {
+                          showRatingDialog(track);
+                        },
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              labelText: 'Search for a song',
-              suffixIcon: IconButton(
-                icon: Icon(Icons.search),
-                onPressed: () => searchSong(_searchController.text),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _searchResults.length,
-              itemBuilder: (context, index) {
-                final track = _searchResults[index];
-                return ListTile(
-                  title: Text(track.songName),
-                  subtitle: Text('${track.artistName} - ${track.albumName}'),
-                  trailing: IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: () {
-                      showRatingDialog(track);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -480,3 +623,22 @@ class SimplifiedTrack {
     );
   }
 }
+
+ /* SizedBox(width: 8), // Spacing between the buttons
+              ElevatedButton(
+                onPressed: () {
+                  final songName = _songNameController.text;
+                  final artist = _artistController.text;
+                  if (songName.isNotEmpty && artist.isNotEmpty) {
+                    deleteSong(songName, artist);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter song name and artist')),
+                    );
+                  }
+                },
+                child: Text('Remove Song'),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.red, // Button color for delete
+                ),
+              ),*/

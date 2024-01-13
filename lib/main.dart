@@ -33,6 +33,7 @@ class MyApp extends StatelessWidget {
       title: 'SUpotify',
       theme: ThemeData(
         primarySwatch: Colors.green, // You can choose your own color
+        backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       ),
       home: const startScreen(),
       

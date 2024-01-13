@@ -218,6 +218,7 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
     @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
         title: const Text('Friend Management'),
         actions: [

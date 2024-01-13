@@ -9,6 +9,10 @@ import 'package:supotify/views/addSongs2.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supotify/views/createGroup.dart';
+import 'package:supotify/views/artistPopularity.dart';
+import 'package:supotify/views/songArtistData.dart';
+
 class homePage extends StatefulWidget {
   const homePage({super.key});
 
@@ -21,6 +25,7 @@ class _homePageState extends State<homePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
         title: const Text('Home'),
         actions: [
@@ -68,6 +73,25 @@ class _homePageState extends State<homePage> {
                         MaterialPageRoute(builder: (context) => RecommendSongsPage()));
                  
                 }),
+
+           const SizedBox(height: 35,),
+
+           firebaseUIButton(context, "Groups", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => CreateGroupPage()));
+                 
+                }),
+
+                 const SizedBox(height: 10,),
+
+           firebaseUIButton(context, "pop", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => homePage2()));
+                 
+                }),
+    
     
 
     
