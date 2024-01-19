@@ -1,0 +1,23 @@
+/* SongsPage.css */
+
+.search-container {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px;
+}
+
+.search-input {
+    padding: 8px;
+    margin-right: 4px;
+    /* Additional styles */
+}
+
+.search-button {
+    padding: 8px;
+    /* Additional styles */
+}
+
+.song-list-container {
+    margin-top: 60px; /* Adjust the margin to account for the fixed navbar */
+    /* Additional styles */
+}

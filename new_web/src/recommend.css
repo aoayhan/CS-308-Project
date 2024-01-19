@@ -1,0 +1,33 @@
+/* Add this to your existing CSS or create a new CSS file */
+body {
+    background-color: #fff; /* Set the background color of the entire page to white */
+    color: #000; /* Set the text color to black */
+    margin: 0; /* Remove default margin to ensure full width */
+    font-family: 'Arial', sans-serif; /* Set a default font-family */
+}
+
+.main-content {
+    display: flex;
+    justify-content: space-between;
+}
+
+.recommendations-container {
+    width: 45%; /* Adjust the width as needed */
+    padding: 20px;
+    border: 1px solid #ddd; /* Add a border for separation */
+    margin: 20px;
+    background-color: rgba(255, 255, 255, 0.8); /* Set the background color with transparency (adjust the fourth value) */
+    color: #000; /* Set the text color to black */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Add a subtle box shadow for depth */
+    border-radius: 8px; /* Add rounded corners for aesthetics */
+}
+
+/* Additional styling as needed */
+.recommendations-title {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.recommendation-item {
+    margin-bottom: 8px;
+}

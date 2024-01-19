@@ -1,0 +1,53 @@
+.card-feature-card {
+  width: 100%;
+  display: flex;
+  padding: 16px; /* replace with your desired value */
+  position: relative;
+  align-items: flex-start;
+  border-radius: 8px; /* replace with your desired value */
+  flex-direction: row;
+  justify-content: flex-start;
+  background-color: #fff; /* replace with your desired color */
+}
+
+.card-icon {
+  fill: #0050a1; /* replace with your desired color */
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  margin-right: 12px; /* replace with your desired value */
+}
+
+.card-container {
+  gap: 8px; /* replace with your desired value */
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.card-text {
+  font-family: "Raleway", sans-serif;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.card-text1 {
+  color: #333; /* replace with your desired color */
+  line-height: 1.6;
+}
+
+@media(max-width: 767px) {
+  .card-feature-card {
+      flex-direction: column;
+  }
+  .card-container {
+      flex-direction: column;
+  }
+}
+
+@media(max-width: 479px) {
+  .card-container {
+      flex-direction: column;
+  }
+}
