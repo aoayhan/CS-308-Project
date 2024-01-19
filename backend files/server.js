@@ -70,19 +70,15 @@ const getPublicSpotifyToken = async () => {
     publicTokenExpirationEpoch = (new Date().getTime() / 1000) + expiresIn - 300; // Subtract 5 minutes to refresh token early
 };
 // Refresh the token periodically
-setInterval(() => {
-    if (new Date().getTime() / 1000 > publicTokenExpirationEpoch) {
-        getPublicSpotifyToken();
-    }
-}, 1000 * 60 * 5); // Check every 5 minutes
+let intervalId = setInterval(() => {
+    // Your interval logic...
+}, 1000 * 60 * 5);
 getPublicSpotifyToken();// Initial token fetch
 
  app.get('/', (req, res) => {
     res.sendFile(__dirname + '/succ.html');
 });
- app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+
 app.post('/api/register', async (req, res) => {
     const { email, password } = req.body;
 
@@ -1189,7 +1185,8 @@ app.post('/create-playlist', async (req, res) => {
   
     try {
       // Assume req.user contains the authenticated user's data
-      const userSpotifyAccessToken = "BQCro7eVip71TvD0uJW_kn_07OHcQnbUIT0M5aGpcmNpj8ZMT1jq4hCT9O0ZOiPBUBQvZeWIwJMUWj1zw-S_LSvplw9PAahZ6Eas7cndOlPNfSYURYRErBft6dqk3tuhS2Wk6eKWFQzCrgsaY5B9vnAORscCDQwu-epuZLg4GjCHFWL4EB6EZzHuu6DbT_dSlZVvvFWy4CMHdf4kwQqW_QJKNX2riCt-i5iP1LPb6SChdodLktQ4ANQCwxYTbw";
+
+      const userSpotifyAccessToken = "BQAM4SfzekHYt4XO0s6yMDbFJMghOykn4swd-5m_JhuCQ-3S-lL5ncQC8g5mS6LQN3dcR8lEL9oeKUmCTvWbnqMqCFbyJNSTiWLB7Aas53CfrZeKrtLpqqmUkQRuWtUGe08ITt97tExb0dBoWuW3UlfRKG9GHRiCKE9ZaEGXPu_p4ldA80M2bz22MuiyGJdKMAXUwLHsK66U_-sDor0BLF3QJQK5jbcJmGyR13tYw0AZj-VDso-cTpTdo_Zo6g";
       const friendGroupId = req.body.friendGroupId; // The friend group ID should be sent in the request body
   
       // Fetch the friend group name from Firestore
@@ -1254,7 +1251,8 @@ async function addSongsToPlaylist(playlistId, friendGroupId, accessToken) {
 }
 app.post('/create-recommendation-playlist', async (req, res) => {
     const { friendGroupId } = req.body;
-    const userSpotifyAccessToken = "BQCro7eVip71TvD0uJW_kn_07OHcQnbUIT0M5aGpcmNpj8ZMT1jq4hCT9O0ZOiPBUBQvZeWIwJMUWj1zw-S_LSvplw9PAahZ6Eas7cndOlPNfSYURYRErBft6dqk3tuhS2Wk6eKWFQzCrgsaY5B9vnAORscCDQwu-epuZLg4GjCHFWL4EB6EZzHuu6DbT_dSlZVvvFWy4CMHdf4kwQqW_QJKNX2riCt-i5iP1LPb6SChdodLktQ4ANQCwxYTbw";
+    const userSpotifyAccessToken = "BQAM4SfzekHYt4XO0s6yMDbFJMghOykn4swd-5m_JhuCQ-3S-lL5ncQC8g5mS6LQN3dcR8lEL9oeKUmCTvWbnqMqCFbyJNSTiWLB7Aas53CfrZeKrtLpqqmUkQRuWtUGe08ITt97tExb0dBoWuW3UlfRKG9GHRiCKE9ZaEGXPu_p4ldA80M2bz22MuiyGJdKMAXUwLHsK66U_-sDor0BLF3QJQK5jbcJmGyR13tYw0AZj-VDso-cTpTdo_Zo6g";
+
   
     try {
       const friendGroupDoc = await firestore.collection('friendGroups').doc(friendGroupId).get();
@@ -1322,8 +1320,7 @@ app.post('/create-recommendation-playlist', async (req, res) => {
       res.status(500).send('Internal Server Error');
     }
 });
-const sourceFirebaseApp = admin.initializeApp({
-      
+const sourceFirebaseApp = admin.initializeApp({      
     }),
     databaseURL: "https://console.firebase.google.com/project/cs308fire/firestore/data/~2F" // Use your Firebase project's database URL here
 }, 'source');
@@ -1685,12 +1682,15 @@ app.get('/api/get-least-liked-artist', async (req, res) => {
             if (averageRating < lowestAverage) {
                 lowestAverage = averageRating;
                 leastLikedArtist = artist;
+
+                songAverageRating = averageRating.toFixed(2);
             }
         }
 
         if (leastLikedArtist) {
             // Construct the Twitter share URL with the text message
-            const tweetText = `My least liked SUpotify artist is #${leastLikedArtist}. What is yours?`;
+
+            const tweetText = `My least liked SUpotify artist is #${leastLikedArtist}. I rated them ${songAverageRating}. What is yours?`;
             const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
             // Redirect to the Twitter share URL
@@ -1735,7 +1735,9 @@ app.get('/api/artist-popularity', async (req, res) => {
     }
 });
 app.get('/api/favorite-song-per-year', async (req, res) => {
-    const { userEmail } = req.body;
+
+    const userEmail = req.query.userEmail;
+
 
     if (!userEmail) {
         return res.status(400).send('User email is required');
@@ -1768,3 +1770,12 @@ app.get('/api/favorite-song-per-year', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
+// At the end of server.js, replace app.listen(...) with:
+if (process.env.NODE_ENV !== 'test') {
+    getPublicSpotifyToken();
+    app.listen(port, () => {
+      console.log(`Server running at http://localhost:${port}`);
+    });
+}
+module.exports = {app, intervalId}; // Export the app for testing
