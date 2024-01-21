@@ -48,6 +48,8 @@ class GroupService {
 
 // UserGroupsPage Widget
 class UserGroupsPage extends StatefulWidget {
+  const UserGroupsPage({super.key});
+
   @override
   _UserGroupsPageState createState() => _UserGroupsPageState();
 }
@@ -65,7 +67,7 @@ class _UserGroupsPageState extends State<UserGroupsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Groups'),
+        title: const Text('My Groups'),
       ),
       body: FutureBuilder<List<FriendGroup>>(
         future: futureGroups,
@@ -85,7 +87,7 @@ class _UserGroupsPageState extends State<UserGroupsPage> {
               );
             }
           }
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         },
       ),
     );

@@ -6,6 +6,8 @@ import 'viewGroups.dart';
 import 'dart:convert';
 
 class CreateGroupPage extends StatefulWidget {
+  const CreateGroupPage({super.key});
+
   @override
   _CreateGroupPageState createState() => _CreateGroupPageState();
 }
@@ -39,7 +41,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   print('Response body: ${response.body}');
 
   if (response.statusCode == 201) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Group created successfully')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Group created successfully')));
   } else {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to create group: ${response.body}')));
   }
@@ -74,7 +76,7 @@ Future<void> addFriendToGroup(String userEmail, String groupName, String friendE
 
   // Handle response...
   if (response.statusCode == 200) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Friend removed successfully')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Friend removed successfully')));
   } else {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove friend: ${response.body}')));
   }
@@ -92,10 +94,10 @@ Widget build(BuildContext context) {
 
       // If the future is still running, show a loading indicator
       if (snapshot.hasError) {
-        return Center(child: Text('Error initializing Firebase'));
+        return const Center(child: Text('Error initializing Firebase'));
       }
 
-      return Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     },
   );
 }
@@ -103,30 +105,29 @@ Widget build(BuildContext context) {
 Widget buildCreateGroupForm() {
   User? user = FirebaseAuth.instance.currentUser;
   String userEmail = user?.email ?? '';
-  final _addGroupFormKey = GlobalKey<FormState>();  // Separate form key for group creation
-  final _addFriendFormKey = GlobalKey<FormState>(); // Separate form key for adding/removing friend
+  final addGroupFormKey = GlobalKey<FormState>();  // Separate form key for group creation
+  final addFriendFormKey = GlobalKey<FormState>(); // Separate form key for adding/removing friend
   String addFriendGroupName = '';  // Variable for group name in add/remove friend form
 
   return Scaffold(
     //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
     appBar: AppBar(
-      title: Text('Group Operations'),
+      title: const Text('Group Operations'),
       actions: <Widget>[
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
+            padding: const EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
             child: ElevatedButton(
               onPressed: () {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => UserGroupsPage()));
+                    MaterialPageRoute(builder: (context) => const UserGroupsPage()));
               },
               style: ElevatedButton.styleFrom(
-                primary: Colors.green, // Button color
-                onPrimary: Colors.white, // Text color
+                foregroundColor: Colors.white, backgroundColor: Colors.green, // Text color
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'View Your Songs',
                 style: TextStyle(fontSize: 14), // Adjust font size as needed
               ),
@@ -135,21 +136,21 @@ Widget buildCreateGroupForm() {
         ],
     ),
     body: SingleChildScrollView(
-      padding: EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           // Section for Creating Group
-          Text(
+          const Text(
             'Create Group',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Form(
-            key: _addGroupFormKey,
+            key: addGroupFormKey,
             child: Column(
               children: [
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Group Name'),
+                  decoration: const InputDecoration(labelText: 'Group Name'),
                   onSaved: (value) {
                     groupName = value!;
                   },
@@ -160,32 +161,32 @@ Widget buildCreateGroupForm() {
                     return null;
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    if (_addGroupFormKey.currentState!.validate()) {
-                      _addGroupFormKey.currentState!.save();
+                    if (addGroupFormKey.currentState!.validate()) {
+                      addGroupFormKey.currentState!.save();
                       createGroup(userEmail, groupName);
                     }
                   },
-                  child: Text('Create Group'),
+                  child: const Text('Create Group'),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 40),
+          const SizedBox(height: 40),
 
           // Section for Adding/Removing Friend
-          Text(
+          const Text(
             'Manage Group Members',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Form(
-            key: _addFriendFormKey,
+            key: addFriendFormKey,
             child: Column(
               children: [
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Group Name'),
+                  decoration: const InputDecoration(labelText: 'Group Name'),
                   onSaved: (value) {
                     addFriendGroupName = value!;
                   },
@@ -197,7 +198,7 @@ Widget buildCreateGroupForm() {
                   },
                 ),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Friend Email'),
+                  decoration: const InputDecoration(labelText: 'Friend Email'),
                   onSaved: (value) {
                     friendEmail = value!;
                   },
@@ -208,35 +209,36 @@ Widget buildCreateGroupForm() {
                     return null;
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          if (_addFriendFormKey.currentState!.validate()) {
-                            _addFriendFormKey.currentState!.save();
+                          if (addFriendFormKey.currentState!.validate()) {
+                            addFriendFormKey.currentState!.save();
                             addFriendToGroup(userEmail, addFriendGroupName, friendEmail);
                           }
                         },
-                        child: Text('Add Friend'),
+                        child: const Text('Add Friend'),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          if (_addFriendFormKey.currentState!.validate()) {
-                            _addFriendFormKey.currentState!.save();
+                          if (addFriendFormKey.currentState!.validate()) {
+                            addFriendFormKey.currentState!.save();
                             removeFriendFromGroup(userEmail, addFriendGroupName, friendEmail);
                           }
                         },
-                        child: Text('Remove Friend'),
                         style: ElevatedButton.styleFrom(
-                          primary: Colors.red, // Button color for remove
+                          backgroundColor: Colors.red, // Button color for remove
                         ),
+                        child: const Text('Remove Friend'),
                       ),
                     ),
+                    
                   ],
                 ),
               ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supotify/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supotify/views/startScreen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -32,8 +31,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'SUpotify',
       theme: ThemeData(
-        primarySwatch: Colors.green, // You can choose your own color
-        backgroundColor: const Color.fromARGB(255, 70, 68, 68),
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.green).copyWith(background: const Color.fromARGB(255, 70, 68, 68)),
       ),
       home: const startScreen(),
       

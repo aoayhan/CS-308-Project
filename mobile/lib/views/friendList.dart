@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:supotify/main.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:supotify/reusable_widgets/reusable_widget.dart';
 
 class FriendManagementPage extends StatefulWidget {
   const FriendManagementPage({Key? key}) : super(key: key);

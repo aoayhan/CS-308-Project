@@ -170,7 +170,7 @@ class _SongAddPageState extends State<SongAddPage> {
 
       if (result != null) {
         if (kIsWeb) {
-          final html.File file = html.File([result.files.single.bytes!], result.files.single.name!);
+          final html.File file = html.File([result.files.single.bytes!], result.files.single.name);
 
           final html.FileReader reader = html.FileReader();
           reader.readAsText(file);

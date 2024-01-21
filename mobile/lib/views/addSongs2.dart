@@ -62,7 +62,7 @@ class _SongAddPageState2 extends State<SongAddPage2> {
       Uri.parse('https://accounts.spotify.com/api/token'),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
+        'Authorization': 'Basic ${base64Encode(utf8.encode('$clientId:$clientSecret'))}',
       },
       body: 'grant_type=client_credentials',
     );
@@ -110,7 +110,7 @@ class _SongAddPageState2 extends State<SongAddPage2> {
 
         // Fetch songs from Firebase and add them to the search results
         final QuerySnapshot firebaseSongs = await songsCollection.get();
-        firebaseSongs.docs.forEach((doc) {
+        for (var doc in firebaseSongs.docs) {
           final String songId = doc['id'];
           final String songName = doc['name'];
           final List<String> performers = List<String>.from(doc['performers']);
@@ -118,7 +118,7 @@ class _SongAddPageState2 extends State<SongAddPage2> {
           final String yearName = doc['year'];
           final String editName = doc['edit'];
           searchResults.add(Song(songId, songName, performers, albumName, yearName, editName));
-        });
+        }
 
         // Print the number of search results for debugging
         print('Number of search results: ${searchResults.length}');
@@ -218,7 +218,7 @@ class _SongAddPageState2 extends State<SongAddPage2> {
                         );
                       },
                     )
-                  : Center(
+                  : const Center(
                       child: Text('No results found for the given search query.'),
                     ),
             ),

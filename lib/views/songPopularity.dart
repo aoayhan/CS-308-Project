@@ -1,23 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-
-class FavoriteSong {
-  final String title;
-  final int year;
-  final double rating;
-
-  FavoriteSong({required this.title, required this.year, required this.rating});
-
-  factory FavoriteSong.fromJson(Map<String, dynamic> json) {
-    return FavoriteSong(
-      title: json['title'],
-      year: json['year'],
-      rating: json['rating'].toDouble(),
-    );
-  }
-}
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class FavoriteSongsPage extends StatefulWidget {
   @override
@@ -25,36 +9,53 @@ class FavoriteSongsPage extends StatefulWidget {
 }
 
 class _FavoriteSongsPageState extends State<FavoriteSongsPage> {
-  late Future<Map<int, FavoriteSong>> favoriteSongs;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  Map<String, dynamic> _favoriteSongs = {};
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    favoriteSongs = fetchFavoriteSongs();
+    _fetchFavoriteSongs();
   }
 
-  Future<Map<int, FavoriteSong>> fetchFavoriteSongs() async {
-     User? user = FirebaseAuth.instance.currentUser;
-  if (user == null || user.email == null) {
-    throw Exception('No user logged in');
-  }
+  Future<void> _fetchFavoriteSongs() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  // Construct the URL with query parameters
-  final Uri url = Uri.http('localhost:3000', '/api/favorite-song-per-year', {'userEmail': user.email});
+    User? user = _auth.currentUser;
+    final userEmail = user?.email;
 
-  final response = await http.get(url);
+    if (userEmail == null) {
+      print("User email is null");
+      setState(() => _isLoading = false);
+      return; // Exit if email is null
+    }
 
-    if (response.statusCode == 200) {
-      Map<int, FavoriteSong> songsByYear = {};
-      Map<String, dynamic> jsonData = json.decode(response.body);
-      jsonData.forEach((key, value) {
-        songsByYear[int.parse(key)] = FavoriteSong.fromJson(value);
-      });
-      return songsByYear;
-    } else {
-      print('Request failed with status: ${response.statusCode}.');
-      print('Response body: ${response.body}');
-      throw Exception('Failed to load favorite songs, status code: ${response.statusCode}');
+    final uri = Uri.http('localhost:3000', '/api/favorite-song-per-year', {'userEmail': userEmail});
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map<String, dynamic>) {
+          setState(() {
+            _favoriteSongs = data;
+            _isLoading = false;
+          });
+        } else {
+          print("Data format is not as expected: ${response.body}");
+          setState(() => _isLoading = false);
+        }
+      } else {
+        print('Failed to load favorite songs, Status code: ${response.statusCode}, Body: ${response.body}');
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print('Error fetching favorite songs: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -64,30 +65,21 @@ class _FavoriteSongsPageState extends State<FavoriteSongsPage> {
       appBar: AppBar(
         title: Text('Favorite Songs by Year'),
       ),
-      body: FutureBuilder<Map<int, FavoriteSong>>(
-        future: favoriteSongs,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          } else if (snapshot.hasError) {
-            return Text("Error: ${snapshot.error}");
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Text('No favorite songs available');
-          } else {
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                int year = snapshot.data!.keys.elementAt(index);
-                FavoriteSong song = snapshot.data![year]!;
-                return ListTile(
-                  title: Text(song.title),
-                  subtitle: Text('Year: ${song.year}, Rating: ${song.rating}'),
-                );
-              },
-            );
-          }
-        },
-      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : (_favoriteSongs.isNotEmpty
+              ? ListView.builder(
+                  itemCount: _favoriteSongs.keys.length,
+                  itemBuilder: (context, index) {
+                    String year = _favoriteSongs.keys.elementAt(index);
+                    var song = _favoriteSongs[year];
+                    return ListTile(
+                      title: Text(song['title'] ?? 'Unknown Title'),
+                      subtitle: Text('Year: $year, Rating: ${song['rating'] ?? 'N/A'}'),
+                    );
+                  },
+                )
+              : Center(child: Text("No favorite songs found."))),
     );
   }
 }

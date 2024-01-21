@@ -64,7 +64,7 @@ FractionallySizedBox firebaseUIButton(BuildContext context, String title, Functi
         child: Text(
           title,
           style: const TextStyle(
-            color: Colors.white70,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),

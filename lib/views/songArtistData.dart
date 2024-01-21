@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
-import 'package:supotify/main.dart';
-import 'package:supotify/views/addsongkurtarma.dart';
-import 'package:supotify/views/recommendSongs.dart';
-import 'package:supotify/views/addSongs.dart';
-import 'package:supotify/views/friendList.dart';
-import 'package:supotify/views/addSongs2.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:supotify/views/createGroup.dart';
 import 'package:supotify/views/artistPopularity.dart';
 import 'package:supotify/views/songPopularity.dart';
+import 'package:supotify/views/leastLikedArtists.dart';
 
 class homePage2 extends StatefulWidget {
   const homePage2({super.key});
@@ -55,7 +47,7 @@ class _homePageState2 extends State<homePage2> {
            firebaseUIButton(context, "Popular Artists", () {
                   
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => TopArtistPage()));
+                        MaterialPageRoute(builder: (context) => const TopArtistPage()));
                  
                 }),
 
@@ -67,7 +59,14 @@ class _homePageState2 extends State<homePage2> {
                         MaterialPageRoute(builder: (context) => FavoriteSongsPage()));
                  
                 }),
-    
+              const SizedBox(height: 10,),
+
+           firebaseUIButton(context, "least liked Artists", () {
+                  
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => LeastLikedArtistPage()));
+                 
+                }),
     
 
     

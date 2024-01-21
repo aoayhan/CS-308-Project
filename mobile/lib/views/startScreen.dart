@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supotify/views/loginPage.dart';
 import 'package:supotify/views/signupPage.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
-import 'package:supotify/views/addSongs.dart';
-import 'package:supotify/views/addSongs2.dart';
 import 'package:supotify/views/friendList.dart';
 class startScreen extends StatelessWidget {
   const startScreen({super.key});

@@ -19,6 +19,8 @@ class TopArtist {
 
 // Create a Stateful Widget for the Top Artist Page
 class TopArtistPage extends StatefulWidget {
+  const TopArtistPage({super.key});
+
   @override
   _TopArtistPageState createState() => _TopArtistPageState();
 }
@@ -48,18 +50,18 @@ class _TopArtistPageState extends State<TopArtistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Top Artists'),
+        title: const Text('Top Artists'),
       ),
       body: Center(
         child: FutureBuilder<List<TopArtist>>(
           future: topArtists,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator();
+              return const CircularProgressIndicator();
             } else if (snapshot.hasError) {
               return Text("Error: ${snapshot.error}");
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Text('No data available');
+              return const Text('No data available');
             } else {
               // Use a ListView to display each artist
               return ListView.builder(

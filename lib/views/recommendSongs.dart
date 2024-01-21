@@ -18,6 +18,8 @@ class SongService {
 }
 
 class RecommendSongsPage extends StatefulWidget {
+  const RecommendSongsPage({super.key});
+
   @override
   _RecommendSongsPageState createState() => _RecommendSongsPageState();
 }
@@ -78,7 +80,7 @@ class _RecommendSongsPageState extends State<RecommendSongsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Recommended Songs'),
+        title: const Text('Recommended Songs'),
         actions: [
           IconButton(
             onPressed: () {

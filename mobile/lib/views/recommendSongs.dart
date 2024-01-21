@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supotify/utilis/songServices.dart';// Import the service file
 
 class RecommendSongsPage extends StatefulWidget {
+  const RecommendSongsPage({super.key});
+
   @override
   _RecommendSongsPageState createState() => _RecommendSongsPageState();
 }
@@ -20,13 +22,13 @@ class _RecommendSongsPageState extends State<RecommendSongsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Recommended Songs'),
+        title: const Text('Recommended Songs'),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: recommendedSongs,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
+            return const CircularProgressIndicator();
           } else if (snapshot.hasError) {
             return Text('Error: ${snapshot.error}');
           } else if (snapshot.hasData) {
@@ -41,7 +43,7 @@ class _RecommendSongsPageState extends State<RecommendSongsPage> {
               },
             );
           } else {
-            return Text('No recommendations available.');
+            return const Text('No recommendations available.');
           }
         },
       ),

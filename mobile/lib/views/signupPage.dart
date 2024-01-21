@@ -81,7 +81,7 @@ class _signupPageState extends State<signupPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
                       _errorText,
-                      style: TextStyle(color: Colors.red),
+                      style: const TextStyle(color: Colors.red),
                     ),
                   ),
                 firebaseUIButton(context, "Sign Up", () {

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io' show File;
-import 'package:supotify/reusable_widgets/reusable_widget.dart';
 import 'package:supotify/views/addSongs.dart';
 
 class AddSongPage2 extends StatelessWidget {
+  const AddSongPage2({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,12 +18,14 @@ class AddSongPage2 extends StatelessWidget {
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: SearchPage(),
+      home: const SearchPage(),
     );
   }
 }
 
 class SearchPage extends StatefulWidget {
+  const SearchPage({super.key});
+
   @override
   _SearchPageState createState() => _SearchPageState();
 }
@@ -60,7 +62,7 @@ class _SearchPageState extends State<SearchPage> {
       throw Exception('User not logged in');
     }
 
-    final url = 'http://localhost:3000/api/add-song';
+    const url = 'http://localhost:3000/api/add-song';
     final response = await http.post(
       Uri.parse(url),
       headers: <String, String>{
@@ -78,7 +80,7 @@ class _SearchPageState extends State<SearchPage> {
 
     if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Song added successfully')),
+        const SnackBar(content: Text('Song added successfully')),
       );
     } else {
       throw Exception('Failed to add song: ${response.body}');
@@ -86,36 +88,36 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void showRatingDialog(SimplifiedTrack track) {
-    final _ratingController = TextEditingController();
+    final ratingController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('Rate ${track.songName}'),
           content: TextField(
-            controller: _ratingController,
+            controller: ratingController,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Enter a rating from 1 to 10',
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: Text('Submit'),
+              child: const Text('Submit'),
               onPressed: () {
-                final rating = int.tryParse(_ratingController.text);
+                final rating = int.tryParse(ratingController.text);
                 if (rating != null && rating > 0 && rating <= 10) {
                   addSong(track, rating);
                   Navigator.of(context).pop();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Please enter a valid rating')),
+                    const SnackBar(content: Text('Please enter a valid rating')),
                   );
                 }
               },
@@ -128,10 +130,10 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> uploadBatchSongs(File file) async {
     try {
-      final url = 'http://localhost:3000/api/add-batch-songs';
+      const url = 'http://localhost:3000/api/add-batch-songs';
       final request = http.MultipartRequest('POST', Uri.parse(url))
         ..files.add(
-          await http.MultipartFile.fromBytes(
+          http.MultipartFile.fromBytes(
             'songsFile',
             await file.readAsBytes(),
             filename: 'songsFile.json',
@@ -142,7 +144,7 @@ class _SearchPageState extends State<SearchPage> {
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Songs added successfully')),
+          const SnackBar(content: Text('Songs added successfully')),
         );
       } else {
         throw Exception('Failed to add batch songs: ${response.body}');
@@ -150,7 +152,7 @@ class _SearchPageState extends State<SearchPage> {
     } catch (error) {
       print('Error uploading batch songs: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading batch songs')),
+        const SnackBar(content: Text('Error uploading batch songs')),
       );
     }
   }
@@ -175,7 +177,7 @@ class _SearchPageState extends State<SearchPage> {
 
   if (songName.isEmpty || artist.isEmpty || album.isEmpty || year.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please fill in all fields')),
+      const SnackBar(content: Text('Please fill in all fields')),
     );
     return;
   }
@@ -187,7 +189,7 @@ class _SearchPageState extends State<SearchPage> {
     throw Exception('User not logged in');
   }
 
-  final url = 'http://localhost:3000/api/add-song';
+  const url = 'http://localhost:3000/api/add-song';
   final response = await http.post(
     Uri.parse(url),
     headers: <String, String>{
@@ -224,7 +226,7 @@ class _SearchPageState extends State<SearchPage> {
       throw Exception('User not logged in');
     }
 
-    final url = 'http://localhost:3000/api/delete-song';
+    const url = 'http://localhost:3000/api/delete-song';
     final response = await http.delete(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -237,7 +239,7 @@ class _SearchPageState extends State<SearchPage> {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Song deleted successfully')),
+        const SnackBar(content: Text('Song deleted successfully')),
       );
     } else {
       throw Exception('Failed to delete song: ${response.body}');
@@ -245,7 +247,7 @@ class _SearchPageState extends State<SearchPage> {
   }
 
 Future<void> deleteSongsByAlbum(String albumName) async {
-    final url = 'http://localhost:3000/api/delete-songs-by-album';
+    const url = 'http://localhost:3000/api/delete-songs-by-album';
     final response = await http.delete(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -254,7 +256,7 @@ Future<void> deleteSongsByAlbum(String albumName) async {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All songs in the album deleted successfully')),
+        const SnackBar(content: Text('All songs in the album deleted successfully')),
       );
     } else {
       throw Exception('Failed to delete songs: ${response.body}');
@@ -269,7 +271,7 @@ Future<void> deleteSongsByArtist(String artistName) async {
       throw Exception('User not logged in');
     }
 
-    final url = 'http://localhost:3000/api/delete-songs-by-artist';
+    const url = 'http://localhost:3000/api/delete-songs-by-artist';
     final response = await http.delete(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -281,7 +283,7 @@ Future<void> deleteSongsByArtist(String artistName) async {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All songs by the artist deleted successfully')),
+        const SnackBar(content: Text('All songs by the artist deleted successfully')),
       );
     } else {
       throw Exception('Failed to delete songs: ${response.body}');
@@ -295,12 +297,12 @@ Future<void> submitArtistRating(int rating) async {
 
   if (artistName.isEmpty || userId == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please enter the artist name')),
+      const SnackBar(content: Text('Please enter the artist name')),
     );
     return;
   }
 
-  final url = 'http://localhost:3000/api/rate-artist';
+  const url = 'http://localhost:3000/api/rate-artist';
   try {
     final response = await http.post(
       Uri.parse(url),
@@ -314,7 +316,7 @@ Future<void> submitArtistRating(int rating) async {
 
     if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Artist rated successfully')),
+        const SnackBar(content: Text('Artist rated successfully')),
       );
     } else {
       throw Exception('Failed to rate artist: ${response.body}');
@@ -322,42 +324,42 @@ Future<void> submitArtistRating(int rating) async {
   } catch (error) {
     print('Error rating artist: $error');
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error rating artist')),
+      const SnackBar(content: Text('Error rating artist')),
     );
   }
 }
 
 
  void rateArtist() {
-  final TextEditingController _ratingController = TextEditingController();
+  final TextEditingController ratingController = TextEditingController();
   showDialog(
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: Text('Rate Artist'),
+        title: const Text('Rate Artist'),
         content: TextField(
-          controller: _ratingController,
-          decoration: InputDecoration(hintText: "Enter a rating (1-10)"),
+          controller: ratingController,
+          decoration: const InputDecoration(hintText: "Enter a rating (1-10)"),
           keyboardType: TextInputType.number,
         ),
         actions: <Widget>[
           TextButton(
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
             onPressed: () {
               Navigator.of(context).pop();
             },
           ),
           TextButton(
-            child: Text('Submit'),
+            child: const Text('Submit'),
             onPressed: () async {
-              final rating = int.tryParse(_ratingController.text);
+              final rating = int.tryParse(ratingController.text);
               if (rating != null && rating >= 1 && rating <= 10) {
                 // Call the function to send the rating to the server
                 await submitArtistRating(rating);
                 Navigator.of(context).pop();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter a valid rating')),
+                  const SnackBar(content: Text('Please enter a valid rating')),
                 );
               }
             },
@@ -375,19 +377,19 @@ Future<void> submitArtistRating(int rating) async {
     return Scaffold(
       //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
-        title: Text('Flutter Spotify Search'),
+        title: const Text('Flutter Spotify Search'),
         actions: <Widget>[
           ElevatedButton(
             onPressed: () {
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => UserSongs()));
+                  MaterialPageRoute(builder: (context) => const UserSongs()));
             },
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
             ),
-            child: Text(
+            child: const Text(
               'Your Songs',
               style: TextStyle(fontSize: 14),
             ),
@@ -399,7 +401,7 @@ Future<void> submitArtistRating(int rating) async {
                 borderRadius: BorderRadius.circular(30),
               ),
             ),
-            child: Text('Upload JSON'),
+            child: const Text('Upload JSON'),
           ),
         ],
       ),
@@ -418,7 +420,7 @@ Future<void> submitArtistRating(int rating) async {
                   width: halfScreenWidth,
                   child: TextFormField(
                     controller: _songNameController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       icon: Icon(Icons.music_note),
                       labelText: 'Song Name',
                       border: OutlineInputBorder(),
@@ -433,14 +435,14 @@ Future<void> submitArtistRating(int rating) async {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               children: [
                 SizedBox(
                   width: halfScreenWidth,
                   child: TextFormField(
                     controller: _artistController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       icon: Icon(Icons.person),
                       labelText: 'Artist',
                       border: OutlineInputBorder(),
@@ -455,14 +457,14 @@ Future<void> submitArtistRating(int rating) async {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               children: [
                 SizedBox(
                   width: halfScreenWidth,
                   child: TextFormField(
                     controller: _albumController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       icon: Icon(Icons.album),
                       labelText: 'Album',
                       border: OutlineInputBorder(),
@@ -477,14 +479,14 @@ Future<void> submitArtistRating(int rating) async {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               children: [
                 SizedBox(
                   width: halfScreenWidth,
                   child: TextFormField(
                     controller: _yearController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       icon: Icon(Icons.calendar_today),
                       labelText: 'Year',
                       border: OutlineInputBorder(),
@@ -499,19 +501,19 @@ Future<void> submitArtistRating(int rating) async {
                 ),
               ],
             ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Row(
   children: [
     ElevatedButton(
       onPressed: addSongByInput,
-      child: Text('Add Song'),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
       ),
+      child: const Text('Add Song'),
     ),
-    SizedBox(width: 8),
+    const SizedBox(width: 8),
     ElevatedButton(
       onPressed: () {
         final albumName = _albumController.text;
@@ -519,18 +521,18 @@ Future<void> submitArtistRating(int rating) async {
           deleteSongsByAlbum(albumName);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Please enter an album name')),
+            const SnackBar(content: Text('Please enter an album name')),
           );
         }
       },
-      child: Text('Remove Album'),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
       ),
+      child: const Text('Remove Album'),
     ),
-    SizedBox(width: 8),
+    const SizedBox(width: 8),
     ElevatedButton(
       onPressed: () {
         final artistName = _artistController.text;
@@ -538,45 +540,45 @@ Future<void> submitArtistRating(int rating) async {
           deleteSongsByArtist(artistName);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Please enter an artist name')),
+            const SnackBar(content: Text('Please enter an artist name')),
           );
         }
       },
-      child: Text('Remove Artist'),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
       ),
+      child: const Text('Remove Artist'),
     ),
-    SizedBox(width: 8),
+    const SizedBox(width: 8),
     ElevatedButton(
       onPressed: rateArtist,
-      child: Text('Rate Artist'),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
       ),
+      child: const Text('Rate Artist'),
     ),
   ],
 ),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     labelText: 'Search for a song',
                     suffixIcon: IconButton(
-                      icon: Icon(Icons.search),
+                      icon: const Icon(Icons.search),
                       onPressed: () => searchSong(_searchController.text),
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 ListView.builder(
                   shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
                     final track = _searchResults[index];
@@ -584,7 +586,7 @@ Future<void> submitArtistRating(int rating) async {
                       title: Text(track.songName),
                       subtitle: Text('${track.artistName} - ${track.albumName}'),
                       trailing: IconButton(
-                        icon: Icon(Icons.add),
+                        icon: const Icon(Icons.add),
                         onPressed: () {
                           showRatingDialog(track);
                         },

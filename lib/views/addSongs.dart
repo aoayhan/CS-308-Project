@@ -3,8 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'package:supotify/views/addSongs2.dart';
-import 'package:supotify/reusable_widgets/reusable_widget.dart';
 class UserSongs extends StatefulWidget {
+  const UserSongs({super.key});
+
   @override
   _UserSongsPageState createState() => _UserSongsPageState();
 }
@@ -28,7 +29,7 @@ class _UserSongsPageState extends State<UserSongs> {
     final String? userId = user?.email;
 
     if (userId != null) {
-      final url = 'http://localhost:3000/api/view-songs';
+      const url = 'http://localhost:3000/api/view-songs';
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
@@ -79,7 +80,7 @@ class _UserSongsPageState extends State<UserSongs> {
     final String? userId = user?.email;
 
     if (userId != null) {
-      final url = 'http://localhost:3000/api/update-rating';
+      const url = 'http://localhost:3000/api/update-rating';
       try {
         final response = await http.post(
           Uri.parse(url),
@@ -108,7 +109,7 @@ class _UserSongsPageState extends State<UserSongs> {
     final String? userId = user?.email;
 
     if (userId != null) {
-      final url = 'http://localhost:3000/api/delete-song';
+      const url = 'http://localhost:3000/api/delete-song';
       try {
         final response = await http.delete(
           Uri.parse(url),
@@ -136,7 +137,7 @@ class _UserSongsPageState extends State<UserSongs> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Select a Rating'),
+          title: const Text('Select a Rating'),
           content: SingleChildScrollView(
             child: ListBody(
               children: List.generate(10, (index) => index + 1).map((rating) {
@@ -160,23 +161,22 @@ class _UserSongsPageState extends State<UserSongs> {
     return Scaffold(
       //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
-        title: Text('Your Songs and Friends\' Top Songs'),
+        title: const Text('Your Songs and Friends\' Top Songs'),
         actions: <Widget>[
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
+            padding: const EdgeInsets.symmetric(horizontal: 8.0), // Adjust padding as needed
             child: ElevatedButton(
               onPressed: () {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => SearchPage()));
+                    MaterialPageRoute(builder: (context) => const SearchPage()));
               },
               style: ElevatedButton.styleFrom(
-                primary: Colors.green, // Button color
-                onPrimary: Colors.white, // Text color
+                foregroundColor: Colors.white, backgroundColor: Colors.green, // Text color
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'Add-Delete Songs',
                 style: TextStyle(fontSize: 14), // Adjust font size as needed
               ),
@@ -185,13 +185,13 @@ class _UserSongsPageState extends State<UserSongs> {
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : ListView(
                   children: [
                     ExpansionTile(
-                      title: Text('Your Songs'),
+                      title: const Text('Your Songs'),
                       children: userSongs.map<Widget>((song) {
                         return ListTile(
                           title: Text(song['name']),
@@ -200,7 +200,7 @@ class _UserSongsPageState extends State<UserSongs> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: Icon(Icons.delete),
+                                icon: const Icon(Icons.delete),
                                 onPressed: () => _deleteSong(song['name'], song['artist']),
                               ),
                               TextButton(
