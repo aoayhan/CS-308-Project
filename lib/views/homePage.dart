@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supotify/reusable_widgets/reusable_widget.dart';
+import 'package:supotify/views/addsongkurtarma.dart';
 import 'package:supotify/views/recommendSongs.dart';
 import 'package:supotify/views/addSongs.dart';
 import 'package:supotify/views/friendList.dart';
+import 'package:supotify/views/addSongs2.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:supotify/views/createGroup.dart';
+import 'package:supotify/views/artistPopularity.dart';
 import 'package:supotify/views/songArtistData.dart';
 
 class homePage extends StatefulWidget {
@@ -15,20 +20,18 @@ class homePage extends StatefulWidget {
 }
 
 class _homePageState extends State<homePage> {
-   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
         title: const Text('Home'),
         actions: [
           IconButton(
             onPressed: () {
               _auth.signOut();
-              // Perform logout logic here
-              // For example, navigate to the login page
-              Navigator.of(context).pop(); // Assuming you want to go back to the previous page
+              Navigator.of(context).pop();
             },
             icon: const Icon(Icons.logout),
           ),
@@ -36,59 +39,109 @@ class _homePageState extends State<homePage> {
       ),
       body: Center(
         child: Column(
-          
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('Welcome to SUpotify',
-            style: TextStyle(color: Colors.green,fontSize: 24, fontWeight: FontWeight.bold),
+            const Text(
+              'Welcome to SUpotify',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 50,),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Expanded(
+                  child: _buildSectionButton(
+                    context,
+                    "Songs",
+                    UserSongs(),
+                    Icons.music_note,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildSectionButton(
+                    context,
+                    "Friends",
+                    const FriendManagementPage(),
+                    Icons.people,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Expanded(
+                  child: _buildSectionButton(
+                    context,
+                    "Recommendation",
+                    RecommendSongsPage(),
+                    Icons.star,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildSectionButton(
+                    context,
+                    "Groups",
+                    CreateGroupPage(),
+                    Icons.group,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildSectionButton(
+              context,
+              "Pop",
+              homePage2(),
+              Icons.star_outline,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            firebaseUIButton(context, "Songs", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) =>  const UserSongs()));
-                 
-                }),
-            const SizedBox(height: 35,),
-
-            firebaseUIButton(context, "Friends", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const FriendManagementPage()));
-                 
-                }),
-
-            const SizedBox(height: 35,),
-
-           firebaseUIButton(context, "Recommendation", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const RecommendSongsPage()));
-                 
-                }),
-
-           const SizedBox(height: 35,),
-
-           firebaseUIButton(context, "Groups", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const CreateGroupPage()));
-                 
-                }),
-
-                 const SizedBox(height: 10,),
-
-           firebaseUIButton(context, "pop", () {
-                  
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const homePage2()));
-                 
-                }),
-    
-    
-
-    
+  Widget _buildSectionButton(
+    BuildContext context,
+    String text,
+    Widget page,
+    IconData iconData,
+  ) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.green, // Adjust the color as needed
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: TextButton(
+        onPressed: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => page));
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              iconData,
+              size: 40,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),

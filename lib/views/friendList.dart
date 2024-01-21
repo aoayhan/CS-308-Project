@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:supotify/views/friendsTopSongs.dart'; // Ensure this import is correct
 
 class FriendManagementPage extends StatefulWidget {
   const FriendManagementPage({Key? key}) : super(key: key);
@@ -14,14 +13,14 @@ class FriendManagementPage extends StatefulWidget {
 class _FriendManagementPageState extends State<FriendManagementPage> {
   final TextEditingController friendEmailController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  List<String> friendsList = [];
-  List<String> friendRequests = [];
-
   Future<String?> getUserId() async {
     User? user = FirebaseAuth.instance.currentUser;
+
     if (user != null) {
+      // User is signed in
       return user.email;
     } else {
+      // No user is signed in
       return null;
     }
   }
@@ -30,14 +29,17 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
     User? user = FirebaseAuth.instance.currentUser;
     String? userEmail = user?.email;
     String friendEmail = friendEmailController.text.trim();
+
     if (userEmail == null || userEmail.isEmpty) {
       print('User is not logged in.');
       return;
     }
+
     if (friendEmail.isEmpty) {
       print('Friend email is empty.');
       return;
     }
+
     try {
       var url = Uri.parse('http://localhost:3000/api/send-friend-request');
       var response = await http.post(
@@ -50,6 +52,7 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
           'toUserEmail': friendEmail,
         }),
       );
+
       if (response.statusCode == 200) {
         print('Friend request sent successfully');
         friendEmailController.clear();
@@ -64,16 +67,19 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
   Future<void> deleteFriend() async {
     String? userEmail = await getUserId();
     final String friendEmail = friendEmailController.text;
+
     if (userEmail == null || friendEmail.isEmpty) {
       print('User is not logged in or friendEmail is empty.');
       return;
     }
+
     try {
       final response = await http.post(
         Uri.parse('http://localhost:3000/api/deleteFriend'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'userEmail': userEmail, 'friendEmail': friendEmail}),
       );
+
       if (response.statusCode == 200) {
         _loadFriends();
         friendEmailController.clear();
@@ -85,15 +91,21 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
     }
   }
 
+  List<String> friendsList = [];
+  List<String> friendRequests = [];
+
   Future<void> _loadFriends() async {
     String? userEmail = await getUserId();
+
     if (userEmail == null) {
       return;
     }
+
     try {
       final response = await http.get(
         Uri.parse('http://localhost:3000/api/get-user-friends?userEmail=$userEmail'),
       );
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         setState(() {
@@ -109,13 +121,16 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
 
   Future<void> viewFriendRequests() async {
     String? userEmail = await getUserId();
+
     if (userEmail == null) {
       return;
     }
+
     try {
       final response = await http.get(
         Uri.parse('http://localhost:3000/api/view-friend-requests?userEmail=$userEmail'),
       );
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         setState(() {
@@ -131,9 +146,11 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
 
   Future<void> acceptFriendRequest(String friendEmail) async {
     String? userEmail = await getUserId();
+
     if (userEmail == null) {
       return;
     }
+
     try {
       var url = Uri.parse('http://localhost:3000/api/accept-friend-request');
       var response = await http.post(
@@ -146,6 +163,7 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
           'friendEmail': friendEmail,
         }),
       );
+
       if (response.statusCode == 200) {
         print('Friend request accepted successfully');
         _loadFriends();
@@ -160,9 +178,11 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
 
   Future<void> rejectFriendRequest(String friendEmail) async {
     String? userEmail = await getUserId();
+
     if (userEmail == null) {
       return;
     }
+
     try {
       var url = Uri.parse('http://localhost:3000/api/reject-friend-request');
       var response = await http.post(
@@ -175,8 +195,10 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
           'friendEmail': friendEmail,
         }),
       );
+
       if (response.statusCode == 200) {
         print('Friend request rejected successfully');
+        _loadFriends();
         viewFriendRequests();
       } else {
         print('Error rejecting friend request. Status code: ${response.statusCode}');
@@ -186,22 +208,6 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
     }
   }
 
-  void _navigateToFriendsTopSongs(String friendEmail) {
-  if (friendEmail != null && friendEmail.isNotEmpty) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FriendsTopSongsPage(friendEmail: friendEmail),
-      ),
-    );
-  } else {
-    // Handle the case where friendEmail is null or empty
-    print("Friend email is null or empty");
-  }
-}
-
-
-
   @override
   void initState() {
     super.initState();
@@ -209,9 +215,10 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
     viewFriendRequests();
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //backgroundColor: const Color.fromARGB(255, 70, 68, 68),
       appBar: AppBar(
         title: const Text('Friend Management'),
         actions: [
@@ -220,12 +227,12 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
               showModalBottomSheet(
                 context: context,
                 builder: (BuildContext context) {
-                  return SizedBox(
+                  return Container(
                     height: 200,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        const Text(
+                        Text(
                           'Friend Requests:',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
@@ -241,11 +248,11 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.check),
+                                      icon: Icon(Icons.check),
                                       onPressed: () => acceptFriendRequest(friendRequest),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.close),
+                                      icon: Icon(Icons.close),
                                       onPressed: () => rejectFriendRequest(friendRequest),
                                     ),
                                   ],
@@ -260,20 +267,28 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
                 },
               );
             },
-            icon: const Icon(Icons.notifications),
+            icon: Icon(Icons.notifications),
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+
+            const SizedBox(height: 20),
+            
+            TextFormField(
               controller: friendEmailController,
-              decoration: const InputDecoration(labelText: 'Friend Email'),
+              decoration: const InputDecoration(
+                icon: Icon(Icons.email),
+                labelText: 'Friend Email',
+                border: OutlineInputBorder(),
+              ),
             ),
+            
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -281,31 +296,30 @@ class _FriendManagementPageState extends State<FriendManagementPage> {
                 ElevatedButton(
                   onPressed: () => sendFriendRequest(),
                   child: const Text('Send Friend Request'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: deleteFriend,
                   child: const Text('Delete Friend'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Friends List:',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: friendsList.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(friendsList[index]),
-                    trailing: ElevatedButton(
-                      onPressed: () => _navigateToFriendsTopSongs(friendsList[index]),
-                      child: const Text('Top Songs'),
-                    ),
-                  );
-                },
-              ),
+            Column(
+              children: friendsList.map((friend) => Text(friend)).toList(),
             ),
           ],
         ),
