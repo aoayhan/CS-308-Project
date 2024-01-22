@@ -10,7 +10,7 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 //Firebase 
 const admin = require('firebase-admin');
-const serviceAccount = require('./cs308fire-firebase-adminsdk-3258q-016c92bbad.json');
+const serviceAccount = require('..');
 const fs = require('fs').promises;
 const { addUserRatingsToUsersCollection } = require('./songimport'); // Adjust the path to the actual location of songimport.js
 const passport = require('passport');
@@ -30,8 +30,8 @@ app.use(session({
   
 // Passport spotify
 passport.use(new SpotifyStrategy({
-    clientID: 'c30b5791c77b448ab12f973c3b7451cf',
-    clientSecret: '3a5201442fdd4fb794514aeb3816b8c0',
+    clientID: '',
+    clientSecret: '',
     callbackURL: 'http://localhost:3000/auth/spotify/callback'
   },
   function(accessToken, refreshToken, expires_in, profile, done) {
@@ -49,8 +49,8 @@ passport.serializeUser(function(user, done) {
     done(null, obj); // Deserialize the user profile object
   });
 //Spotify 
-const clientId = 'c30b5791c77b448ab12f973c3b7451cf'; // Replace with your Spotify Client ID
-const clientSecret = '3a5201442fdd4fb794514aeb3816b8c0'; // Replace with your Spotify Client Secret
+const clientId = ''; // Replace with your Spotify Client ID
+const clientSecret = ''; // Replace with your Spotify Client Secret
 let accessToken = '';
 let publicTokenExpirationEpoch;
 
@@ -1198,7 +1198,7 @@ app.post('/create-playlist', async (req, res) => {
       const friendGroupName = friendGroupDoc.data().name;
   
       // Use the Spotify API to create a new playlist with the name of the friend group
-      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/${"anilozanayhan"}/playlists`, {
+      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/${""}/playlists`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${userSpotifyAccessToken}`,
@@ -1263,7 +1263,7 @@ app.post('/create-recommendation-playlist', async (req, res) => {
   
       // Create a new playlist
       const playlistName = `Recommended Songs for ${friendGroupDoc.data().name}`;
-      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/anilozanayhan/playlists`, {
+      const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users//playlists`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${userSpotifyAccessToken}`,
