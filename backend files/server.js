@@ -1186,7 +1186,7 @@ app.post('/create-playlist', async (req, res) => {
     try {
       // Assume req.user contains the authenticated user's data
 
-      const userSpotifyAccessToken = "BQAM4SfzekHYt4XO0s6yMDbFJMghOykn4swd-5m_JhuCQ-3S-lL5ncQC8g5mS6LQN3dcR8lEL9oeKUmCTvWbnqMqCFbyJNSTiWLB7Aas53CfrZeKrtLpqqmUkQRuWtUGe08ITt97tExb0dBoWuW3UlfRKG9GHRiCKE9ZaEGXPu_p4ldA80M2bz22MuiyGJdKMAXUwLHsK66U_-sDor0BLF3QJQK5jbcJmGyR13tYw0AZj-VDso-cTpTdo_Zo6g";
+      const userSpotifyAccessToken = "";
       const friendGroupId = req.body.friendGroupId; // The friend group ID should be sent in the request body
   
       // Fetch the friend group name from Firestore
@@ -1251,7 +1251,7 @@ async function addSongsToPlaylist(playlistId, friendGroupId, accessToken) {
 }
 app.post('/create-recommendation-playlist', async (req, res) => {
     const { friendGroupId } = req.body;
-    const userSpotifyAccessToken = "BQAM4SfzekHYt4XO0s6yMDbFJMghOykn4swd-5m_JhuCQ-3S-lL5ncQC8g5mS6LQN3dcR8lEL9oeKUmCTvWbnqMqCFbyJNSTiWLB7Aas53CfrZeKrtLpqqmUkQRuWtUGe08ITt97tExb0dBoWuW3UlfRKG9GHRiCKE9ZaEGXPu_p4ldA80M2bz22MuiyGJdKMAXUwLHsK66U_-sDor0BLF3QJQK5jbcJmGyR13tYw0AZj-VDso-cTpTdo_Zo6g";
+    const userSpotifyAccessToken = "";
 
   
     try {
@@ -1320,12 +1320,13 @@ app.post('/create-recommendation-playlist', async (req, res) => {
       res.status(500).send('Internal Server Error');
     }
 });
-const sourceFirebaseApp = admin.initializeApp({      
+const sourceFirebaseApp = admin.initializeApp({  
+   //fill these with your own database details
     }),
     databaseURL: "https://console.firebase.google.com/project/cs308fire/firestore/data/~2F" // Use your Firebase project's database URL here
 }, 'source');
 const destFirebaseApp = admin.initializeApp({
-      
+   //fill these with your destination database details
     }),
     databaseURL: "https://console.firebase.google.com/project/supotifydb/firestore/data/~2F"
 }, 'destination');
