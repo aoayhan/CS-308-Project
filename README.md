@@ -1,6 +1,6 @@
-## Getting Started
+# Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-# Prerequisites for backend:
+## Prerequisites for backend:
 Node.js
 
 NPM (Node Package Manager)
@@ -44,7 +44,7 @@ A spotify developer account with Client ID and Client Secret
 Run 'node server.js'
 
 
-# Prerequisites for mobile:
+## Prerequisites for mobile:
 
 1) Install flutter
 2) Install Android Studio and Visual Studio
